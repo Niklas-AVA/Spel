@@ -28,9 +28,12 @@
     font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
     overflow:hidden;
     -webkit-user-select:none;user-select:none;
+    -webkit-touch-callout:none;
     -webkit-tap-highlight-color:transparent;
     touch-action:none;
+    overscroll-behavior:none;
   }
+  button{touch-action:manipulation}
   #app{
     position:relative;height:100%;width:100%;
     padding-left:env(safe-area-inset-left,0px);
@@ -207,6 +210,22 @@
   .toast.bad{background:var(--red)}
   .pulse{animation:moneypulse .4s ease}
   @keyframes moneypulse{0%{transform:scale(1)}40%{transform:scale(1.2)}100%{transform:scale(1)}}
+
+  /* ---------- small-screen tuning ---------- */
+  .overlay{touch-action:pan-y}
+  @media (max-width:430px){
+    .topbar{gap:6px}
+    .ctrls{gap:6px}
+    .stat{min-width:0;padding:6px 10px}
+    .stat .v{font-size:16px}
+    .stat .k{font-size:9px}
+    .stat.route .v{font-size:13px}
+    #ctx{left:8px;right:8px;bottom:12px;padding:11px}
+    .ctx-actions.dev{gap:7px}
+    .btn.dev{padding:15px 4px;font-size:12.5px}
+  }
+  @media (max-width:360px){ .stat.route{display:none} }
+  @media (max-height:470px){ .progwrap{display:none} .ctx-head .ctx-sb{display:none} }
 </style>
 
 <div id="app">
@@ -313,7 +332,7 @@
 // =========================================================================
 const cv = document.getElementById('cv');
 const ctx = cv.getContext('2d');
-let W=0,H=0,DPR=1;
+let W=0,H=0,DPR=1,viewZoom=1;
 function resize(){
   DPR = Math.min(window.devicePixelRatio||1, 2);
   const r = cv.getBoundingClientRect();
@@ -321,8 +340,12 @@ function resize(){
   H = Math.max(1, Math.round(r.height));
   cv.width = Math.round(W*DPR); cv.height = Math.round(H*DPR);
   ctx.setTransform(DPR,0,0,DPR,0,0);
+  // show a consistent slice of the world so phones see more of the route
+  viewZoom = Math.max(0.8, Math.min(1.12, W/480));
 }
 window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', ()=>setTimeout(resize,120));
+if(window.visualViewport) window.visualViewport.addEventListener('resize', resize);
 
 // ---------------- persistence ----------------
 const SAVE_KEY = 'sopbil.save.v1';
@@ -543,8 +566,8 @@ cv.addEventListener('pointercancel', endPointer);
 function handleTap(cx,cy){
   const R=game.route; if(!R||game.screen!=='play') return;
   const rect=cv.getBoundingClientRect();
-  const wx=(cx-rect.left)+(game.cam.x-W/2);
-  const wy=(cy-rect.top)+(game.cam.y-H/2);
+  const wx=game.cam.x + ((cx-rect.left)-W/2)/viewZoom;
+  const wy=game.cam.y + ((cy-rect.top)-H/2)/viewZoom;
   const t=game.truck;
   let best=null,bd=1e9;
   for(const b of R.bins){ if(b.status!=='pending') continue;
@@ -556,6 +579,13 @@ function handleTap(cx,cy){
   if(best.dev){ game.activeBin=best; renderCtx(); }
   else resolveEmpty(best,false);
 }
+
+// ---------------- haptics & wake lock (mobile) ----------------
+function buzz(p){ if(!audioOn) return; try{ navigator.vibrate && navigator.vibrate(p); }catch(e){} }
+let wakeLock=null;
+async function requestWake(){ try{ if('wakeLock' in navigator){ wakeLock=await navigator.wakeLock.request('screen'); } }catch(e){} }
+function releaseWake(){ try{ if(wakeLock){ wakeLock.release(); wakeLock=null; } }catch(e){} }
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible' && game.screen==='play' && !game.paused) requestWake(); });
 
 // ---------------- audio (tiny, optional) ----------------
 let audioOn = save.sound!==false, actx=null;
@@ -606,6 +636,7 @@ function startDay(){
   document.getElementById('hint').style.opacity='1';
   updateHud();
   if(actx&&actx.state==='suspended') actx.resume();
+  requestWake();
 }
 
 // ---------------- bin interaction ----------------
@@ -617,17 +648,17 @@ function resolveEmpty(b, auto){
   const pay=Math.round(20*payMult());
   game.dayMoney+=pay; save.money+=pay;
   floatText(b,'+'+pay+' kr','#1f7d3a'); burst(b.x,b.y,'coin');
-  beep(660,0.08); setTimeout(()=>beep(880,0.07),55);
+  beep(660,0.08); setTimeout(()=>beep(880,0.07),55); buzz(12);
   bumpMoney(); persist(); updateHud(); checkDone();
 }
 function emptyBin(){ resolveEmpty(game.activeBin,false); game.activeBin=null; }
 function reportDev(type){
   const b=game.activeBin; if(!b||b.status!=='pending'||!b.dev) return;
-  if(type!==b.dev){ beep(200,0.18,'square'); toast('Fel avvikelse — titta på skylten igen','bad'); return; }
+  if(type!==b.dev){ beep(200,0.18,'square'); buzz(45); toast('Fel avvikelse — titta på skylten igen','bad'); return; }
   b.status='reported';
   const pay=Math.round(30*payMult());
   game.dayMoney+=pay; save.money+=pay;
-  floatText(b,'Avvikelse ✓ +'+pay,'#1f7d3a'); burst(b.x,b.y,'conf');
+  floatText(b,'Avvikelse ✓ +'+pay,'#1f7d3a'); burst(b.x,b.y,'conf'); buzz([15,30,15]);
   beep(620,0.09); setTimeout(()=>beep(820,0.1),80); setTimeout(()=>beep(1040,0.12),170);
   bumpMoney(); toast('Avvikelse rapporterad  +'+pay+' kr','good');
   game.activeBin=null; game.ctxExpanded=false; persist(); updateHud(); checkDone();
@@ -641,7 +672,7 @@ function checkDone(){
 // ---------------- end day & summary ----------------
 function endDay(complete){
   if(game.screen!=='play') return;
-  game.screen='summary'; game.paused=false;
+  game.screen='summary'; game.paused=false; releaseWake();
   document.getElementById('pause').classList.remove('show');
   document.getElementById('ctx').classList.remove('show');
   document.getElementById('hint').style.opacity='0';
@@ -835,8 +866,8 @@ function draw(){
   ctx.clearRect(0,0,W,H);
   // ground base
   ctx.fillStyle=R.ground; ctx.fillRect(0,0,W,H);
-  const ox=game.cam.x-W/2, oy=game.cam.y-H/2;
-  ctx.save(); ctx.translate(-ox,-oy);
+  const z=viewZoom;
+  ctx.save(); ctx.translate(W/2,H/2); ctx.scale(z,z); ctx.translate(-game.cam.x,-game.cam.y);
 
   // sea texture for archipelago
   if(R.sea){
@@ -920,7 +951,7 @@ function draw(){
   ctx.restore();
 
   // off-screen bin arrows (guide to remaining bins)
-  drawOffscreenArrows(ox,oy);
+  drawOffscreenArrows();
   // joystick
   if(joy){ drawJoystick(); }
 }
@@ -1011,13 +1042,12 @@ function drawTruck(t){
   ctx.restore();
 }
 
-function drawOffscreenArrows(ox,oy){
-  const pad=46;
+function drawOffscreenArrows(){
+  const pad=46, z=viewZoom, cx=W/2, cy=H/2;
   for(const b of game.route.bins){
     if(b.status!=='pending') continue;
-    const sx=b.x-ox, sy=b.y-oy;
+    const sx=cx+(b.x-game.cam.x)*z, sy=cy+(b.y-game.cam.y)*z;
     if(sx>-10&&sx<W+10&&sy>-10&&sy<H+10) continue;
-    const cx=W/2, cy=H/2;
     let ang=Math.atan2(sy-cy,sx-cx);
     const ax=cx+Math.cos(ang)*(Math.min(W,H)/2-pad);
     const ay=cy+Math.sin(ang)*(Math.min(W,H)/2-pad);
@@ -1108,8 +1138,9 @@ function openPause(){
   document.getElementById('piLeft').textContent=bins.filter(b=>b.status==='pending').length;
   document.getElementById('piMoney').textContent=Math.round(game.dayMoney)+' kr';
   document.getElementById('pause').classList.add('show');
+  releaseWake();
 }
-function closePause(){ game.paused=false; document.getElementById('pause').classList.remove('show'); }
+function closePause(){ game.paused=false; document.getElementById('pause').classList.remove('show'); requestWake(); }
 document.getElementById('pauseBtn').onclick=openPause;
 document.getElementById('resumeBtn').onclick=closePause;
 document.getElementById('endFromPause').onclick=()=>{
