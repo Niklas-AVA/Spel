@@ -67,12 +67,14 @@
   }
   .iconbtn:active{transform:scale(.94)}
 
-  .endbtn{
-    pointer-events:auto;position:absolute;top:10px;right:10px;
-    background:var(--ink);color:#fff;border:none;border-radius:14px;
-    padding:11px 15px;font-family:Fredoka;font-weight:600;font-size:14px;
-    box-shadow:var(--shadow);cursor:pointer;display:none;
-  }
+  .ctrls{display:flex;gap:8px;pointer-events:auto;align-items:flex-start;flex:0 0 auto}
+  .pause-info{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:4px 0 14px}
+  .pi{background:var(--panel-2);border-radius:14px;padding:11px 12px}
+  .pi .k{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-soft);font-weight:700}
+  .pi .v{font-family:Fredoka;font-weight:700;font-size:19px;font-variant-numeric:tabular-nums;margin-top:3px}
+  .overlay.pausemenu{background:rgba(9,26,19,.82);display:none;align-items:center}
+  .overlay.pausemenu.show{display:flex}
+  .recordchip{display:inline-flex;align-items:center;gap:6px;background:var(--amber);color:#fff;font-family:Fredoka;font-weight:700;font-size:13px;padding:6px 12px;border-radius:999px;margin:2px 0 4px}
 
   /* progress bar of bins */
   .progwrap{
@@ -209,18 +211,21 @@
 
   <div id="hud">
     <div class="topbar">
-      <div style="display:flex;gap:8px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;min-width:0">
         <div class="stat money"><span class="k">Kassa</span><span class="v" id="hudMoney">0 kr</span></div>
         <div class="stat"><span class="k">Dag</span><span class="v" id="hudDay">1</span></div>
+        <div class="stat route"><span class="k" id="hudRouteK">Körtur</span><span class="v" id="hudRoute">Stad</span></div>
       </div>
-      <div class="stat route"><span class="k" id="hudRouteK">Körtur</span><span class="v" id="hudRoute">Stad</span></div>
+      <div class="ctrls">
+        <button class="iconbtn" id="soundBtn" title="Ljud">🔊</button>
+        <button class="iconbtn" id="pauseBtn" title="Paus">⏸</button>
+      </div>
     </div>
     <div class="progwrap" id="progwrap">
       <span class="lbl" id="progLbl">0 / 0</span>
       <div class="progbar"><i id="progFill"></i></div>
       <span class="lbl" id="clock">0:00</span>
     </div>
-    <button class="endbtn" id="endBtn">Avsluta passet</button>
     <div class="hint" id="hint">Dra var som helst för att köra · kör fram till ett kärl</div>
     <div class="toast" id="toast"></div>
   </div>
@@ -277,6 +282,24 @@
       <p class="foot">Pengarna läggs i kassan. Rusta upp bilen och kör en ny dag.</p>
     </div>
   </div>
+
+  <!-- PAUSE -->
+  <div class="overlay pausemenu" id="pause">
+    <div class="sheet">
+      <div class="card">
+        <h2>⏸ Pausat</h2>
+        <p class="sub" id="pauseSub">Dag 1 · Stad</p>
+        <div class="pause-info">
+          <div class="pi"><div class="k">Tömda kärl</div><div class="v" id="piEmpty">0</div></div>
+          <div class="pi"><div class="k">Avvikelser</div><div class="v" id="piDev">0</div></div>
+          <div class="pi"><div class="k">Kvar att köra</div><div class="v" id="piLeft">0</div></div>
+          <div class="pi"><div class="k">Intjänat idag</div><div class="v" id="piMoney">0 kr</div></div>
+        </div>
+        <button class="bigbtn" id="resumeBtn">▶ Fortsätt köra</button>
+        <button class="bigbtn dark" id="endFromPause" style="margin-top:10px">⏹ Avsluta passet</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -300,7 +323,7 @@ window.addEventListener('resize', resize);
 
 // ---------------- persistence ----------------
 const SAVE_KEY = 'sopbil.save.v1';
-const DEFAULT_SAVE = { money:0, day:1, upg:{motor:0,dack:0,komp:0}, unlocked:{stad:true,land:false,oar:false}, lastRoute:'stad' };
+const DEFAULT_SAVE = { money:0, day:1, upg:{motor:0,dack:0,komp:0}, unlocked:{stad:true,land:false,oar:false}, lastRoute:'stad', best:0, sound:true };
 function loadSave(){
   try{ const s = JSON.parse(localStorage.getItem(SAVE_KEY)); if(s&&typeof s.money==='number'){ return Object.assign({},DEFAULT_SAVE, s, {upg:Object.assign({},DEFAULT_SAVE.upg,s.upg), unlocked:Object.assign({},DEFAULT_SAVE.unlocked,s.unlocked)});} }catch(e){}
   return JSON.parse(JSON.stringify(DEFAULT_SAVE));
@@ -453,12 +476,15 @@ const game = {
   screen:'garage', route:null, routeId:save.lastRoute||'stad',
   truck:{x:0,y:0,vx:0,vy:0,ang:-Math.PI/2},
   cam:{x:0,y:0}, time:0, dayMoney:0, activeBin:null, ctxExpanded:false,
-  lastTs:0, hintT:5,
+  lastTs:0, hintT:5, paused:false,
 };
 
 // ---------------- input ----------------
 const input = { ix:0, iy:0, active:false, pid:-1, keys:{} };
-window.addEventListener('keydown',e=>{ input.keys[e.key.toLowerCase()]=true; });
+window.addEventListener('keydown',e=>{
+  const k=e.key.toLowerCase(); input.keys[k]=true;
+  if((k==='escape'||k==='p') && game.screen==='play'){ game.paused?closePause():openPause(); }
+});
 window.addEventListener('keyup',e=>{ input.keys[e.key.toLowerCase()]=false; });
 
 let joy=null; // {ox,oy,x,y}
@@ -481,7 +507,7 @@ cv.addEventListener('pointerup', endPointer);
 cv.addEventListener('pointercancel', endPointer);
 
 // ---------------- audio (tiny, optional) ----------------
-let audioOn = true, actx=null;
+let audioOn = save.sound!==false, actx=null;
 function beep(freq,dur,type='sine',vol=0.06){
   if(!audioOn) return;
   try{
@@ -518,11 +544,11 @@ function startDay(){
   const t=game.truck;
   t.x=game.route.start.x; t.y=game.route.start.y; t.vx=0; t.vy=0; t.ang=-Math.PI/2;
   game.cam.x=t.x; game.cam.y=t.y;
-  game.time=0; game.dayMoney=0; game.activeBin=null; game.ctxExpanded=false; game.hintT=5;
+  game.time=0; game.dayMoney=0; game.activeBin=null; game.ctxExpanded=false; game.hintT=5; game.paused=false;
   game.screen='play';
   document.getElementById('garage').classList.remove('show');
   document.getElementById('summary').classList.remove('show');
-  document.getElementById('endBtn').style.display='block';
+  document.getElementById('pause').classList.remove('show');
   document.getElementById('hint').style.opacity='1';
   updateHud();
   if(actx&&actx.state==='suspended') actx.resume();
@@ -570,8 +596,8 @@ function checkDone(){
 // ---------------- end day & summary ----------------
 function endDay(complete){
   if(game.screen!=='play') return;
-  game.screen='summary';
-  document.getElementById('endBtn').style.display='none';
+  game.screen='summary'; game.paused=false;
+  document.getElementById('pause').classList.remove('show');
   document.getElementById('ctx').classList.remove('show');
   document.getElementById('hint').style.opacity='0';
 
@@ -595,6 +621,8 @@ function endDay(complete){
   }
 
   const net = incEmpty+incDev+bonus-kundCost;
+  const isRecord = net>save.best;
+  if(isRecord) save.best=net;
   save.day += 1; save.lastRoute=game.routeId; persist();
 
   // build summary UI
@@ -602,7 +630,7 @@ function endDay(complete){
   const allHandled = missedDev===0 && missedNormal===0 && falseReport===0;
   document.getElementById('sumEmoji').textContent = allHandled ? '🏆' : (kundCost>0?'📋':'✅');
   document.getElementById('sumTitle').textContent = complete ? (allHandled?'Perfekt pass!':'Passet avklarat') : 'Passet avslutat';
-  document.getElementById('sumSub').textContent = allHandled ? 'Inga missade avvikelser — snyggt kört!' : 'Så här gick dagen';
+  document.getElementById('sumSub').innerHTML = isRecord ? '<span class="recordchip">🏅 Nytt dagsrekord: '+net+' kr</span>' : (allHandled ? 'Inga missade avvikelser — snyggt kört!' : 'Så här gick dagen');
 
   const L=document.getElementById('sumLines'); L.innerHTML='';
   function line(cls,ic,label,amount,mini){
@@ -916,7 +944,7 @@ function drawJoystick(){
 // ---------------- main loop ----------------
 function frame(ts){
   const dt=Math.min(0.05,(ts-game.lastTs)/1000)||0; game.lastTs=ts;
-  if(game.screen==='play'){ update(dt); draw(); }
+  if(game.screen==='play'){ if(!game.paused) update(dt); draw(); }
   requestAnimationFrame(frame);
 }
 
@@ -970,14 +998,34 @@ function buildGarage(){
   });
   // start button label
   document.getElementById('startBtn').innerHTML='▶ Starta passet i '+ROUTE_META[game.routeId].name;
-  document.getElementById('garageFoot').textContent='Dag '+save.day+' · Kassa '+Math.round(save.money)+' kr · byggt för mobil 📱';
+  document.getElementById('garageFoot').textContent='Dag '+save.day+' · Kassa '+Math.round(save.money)+' kr'+(save.best>0?' · Rekord '+save.best+' kr 🏅':'')+' · byggt för mobil 📱';
 }
 
 // ---------------- buttons ----------------
 document.getElementById('startBtn').onclick=()=>{ if(actx&&actx.state==='suspended')actx.resume(); startDay(); };
-document.getElementById('endBtn').onclick=()=>{
+
+function openPause(){
+  if(game.screen!=='play') return;
+  game.paused=true; game.activeBin=null;
+  document.getElementById('ctx').classList.remove('show');
+  const bins=game.route.bins;
+  document.getElementById('pauseSub').textContent='Dag '+save.day+' · '+ROUTE_NAMES[game.routeId];
+  document.getElementById('piEmpty').textContent=bins.filter(b=>b.status==='emptied').length;
+  document.getElementById('piDev').textContent=bins.filter(b=>b.status==='reported').length;
+  document.getElementById('piLeft').textContent=bins.filter(b=>b.status==='pending').length;
+  document.getElementById('piMoney').textContent=Math.round(game.dayMoney)+' kr';
+  document.getElementById('pause').classList.add('show');
+}
+function closePause(){ game.paused=false; document.getElementById('pause').classList.remove('show'); }
+document.getElementById('pauseBtn').onclick=openPause;
+document.getElementById('resumeBtn').onclick=closePause;
+document.getElementById('endFromPause').onclick=()=>{
   const pending=game.route.bins.filter(b=>b.status==='pending').length;
-  endDay(pending===0);
+  closePause(); endDay(pending===0);
+};
+function syncSoundBtn(){ document.getElementById('soundBtn').textContent = audioOn?'🔊':'🔇'; }
+document.getElementById('soundBtn').onclick=()=>{
+  audioOn=!audioOn; save.sound=audioOn; persist(); syncSoundBtn(); if(audioOn) beep(700,0.08);
 };
 document.getElementById('toGarage').onclick=()=>{
   game.screen='garage'; document.getElementById('summary').classList.remove('show');
@@ -987,6 +1035,7 @@ document.getElementById('toGarage').onclick=()=>{
 // ---------------- boot ----------------
 function boot(){
   resize();
+  syncSoundBtn();
   game.screen='garage';
   document.getElementById('garage').classList.add('show');
   buildGarage();
