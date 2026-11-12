@@ -1,0 +1,1005 @@
+<title>Sopbilspasset</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+  /* Layout: full-bleed top-down game canvas with absolutely-placed HUD + overlay menus, all inside #app so the skeleton's safe-area padding keeps controls clear of system bars. Single committed "eco municipal" visual world. */
+  :root{
+    --sky:#0e1c22;        /* app backdrop behind everything */
+    --panel:#ffffff;
+    --panel-2:#f2f6f0;
+    --ink:#15241f;
+    --ink-soft:#4d5f57;
+    --line:#dde6dd;
+    --green:#2fa84f;      /* brand eco green */
+    --green-d:#1f7d3a;
+    --green-l:#e4f4e6;
+    --amber:#e8a62e;
+    --red:#e2483a;
+    --blue:#2f7fd1;
+    --shadow:0 10px 30px rgba(8,30,20,.28);
+    color-scheme: light;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{
+    background:var(--sky);
+    color:var(--ink);
+    font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    overflow:hidden;
+    -webkit-user-select:none;user-select:none;
+    -webkit-tap-highlight-color:transparent;
+    touch-action:none;
+  }
+  #app{
+    position:relative;height:100%;width:100%;
+    padding-left:env(safe-area-inset-left,0px);
+    padding-right:env(safe-area-inset-right,0px);
+    overflow:hidden;
+  }
+  canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+
+  h1,h2,h3,.disp{font-family:Fredoka,Inter,sans-serif}
+
+  /* ---------- HUD ---------- */
+  #hud{position:absolute;inset:0;pointer-events:none}
+  .topbar{
+    position:absolute;top:10px;left:10px;right:10px;
+    display:flex;gap:8px;align-items:stretch;justify-content:space-between;
+    pointer-events:none;flex-wrap:wrap;
+  }
+  .stat{
+    pointer-events:none;
+    background:rgba(255,255,255,.94);border-radius:14px;padding:7px 12px;
+    box-shadow:var(--shadow);display:flex;flex-direction:column;gap:1px;min-width:70px;
+  }
+  .stat .k{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);font-weight:600}
+  .stat .v{font-family:Fredoka;font-size:18px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+  .stat.money .v{color:var(--green-d)}
+  .stat.route{flex:1;min-width:0}
+  .stat.route .v{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .topbar .right{display:flex;gap:8px;pointer-events:auto;align-items:center}
+
+  .iconbtn{
+    pointer-events:auto;width:44px;height:44px;border-radius:14px;border:none;
+    background:rgba(255,255,255,.94);box-shadow:var(--shadow);font-size:20px;
+    display:grid;place-items:center;cursor:pointer;color:var(--ink);
+  }
+  .iconbtn:active{transform:scale(.94)}
+
+  .endbtn{
+    pointer-events:auto;position:absolute;top:10px;right:10px;
+    background:var(--ink);color:#fff;border:none;border-radius:14px;
+    padding:11px 15px;font-family:Fredoka;font-weight:600;font-size:14px;
+    box-shadow:var(--shadow);cursor:pointer;display:none;
+  }
+
+  /* progress bar of bins */
+  .progwrap{
+    position:absolute;left:50%;transform:translateX(-50%);top:62px;
+    background:rgba(255,255,255,.94);border-radius:999px;padding:6px 10px;
+    box-shadow:var(--shadow);display:flex;align-items:center;gap:8px;pointer-events:none;
+    max-width:min(92vw,420px);
+  }
+  .progbar{width:150px;height:8px;border-radius:999px;background:var(--line);overflow:hidden}
+  .progbar > i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--green),var(--green-d));transition:width .25s}
+  .progwrap .lbl{font-size:12px;font-weight:600;color:var(--ink-soft);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+  /* ---------- context / action panel ---------- */
+  #ctx{
+    position:absolute;left:10px;right:10px;bottom:16px;margin:0 auto;max-width:460px;
+    background:rgba(255,255,255,.97);border-radius:20px;box-shadow:var(--shadow);
+    padding:12px;pointer-events:auto;display:none;backdrop-filter:blur(4px);
+  }
+  #ctx.show{display:block;animation:pop .18s ease}
+  @keyframes pop{from{transform:translateY(8px);opacity:0}to{transform:none;opacity:1}}
+  .ctx-head{display:flex;gap:10px;align-items:center;margin-bottom:10px}
+  .ctx-ic{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;font-size:22px;flex:0 0 auto}
+  .ctx-tt{font-family:Fredoka;font-weight:600;font-size:15px;line-height:1.15}
+  .ctx-sb{font-size:12px;color:var(--ink-soft);margin-top:2px}
+  .ctx-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .ctx-actions.one{grid-template-columns:1fr}
+  .ctx-actions.dev{grid-template-columns:1fr 1fr}
+  .btn{
+    border:none;border-radius:14px;padding:13px 10px;font-family:Fredoka;font-weight:600;font-size:14px;
+    cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;line-height:1.1;text-align:center;
+  }
+  .btn:active{transform:scale(.97)}
+  .btn.green{background:var(--green);color:#fff}
+  .btn.ghost{background:var(--panel-2);color:var(--ink)}
+  .btn.dev{background:#fff;border:2px solid var(--line);color:var(--ink);font-size:13px;padding:12px 6px;flex-direction:column;gap:4px}
+  .btn.dev .em{font-size:19px}
+  .btn.back{background:transparent;color:var(--ink-soft);grid-column:1/-1;padding:8px}
+  .ctx-dev-title{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);font-weight:700;margin:2px 2px 8px}
+
+  /* ---------- joystick ---------- */
+  .hint{
+    position:absolute;left:50%;bottom:92px;transform:translateX(-50%);
+    background:rgba(20,36,31,.8);color:#fff;font-size:12.5px;font-weight:500;
+    padding:8px 14px;border-radius:999px;pointer-events:none;max-width:88vw;text-align:center;
+    transition:opacity .4s;
+  }
+
+  /* ---------- overlay menus ---------- */
+  .overlay{
+    position:absolute;inset:0;background:linear-gradient(160deg,#143c2a,#0e2a3a);
+    display:none;overflow:auto;padding:22px 16px calc(26px + env(safe-area-inset-bottom,0px));
+    -webkit-overflow-scrolling:touch;
+  }
+  .overlay.show{display:block}
+  .sheet{max-width:560px;margin:0 auto}
+  .brand{display:flex;align-items:center;gap:12px;color:#fff;margin:6px 2px 18px}
+  .brand .logo{width:52px;height:52px;border-radius:16px;background:var(--green);display:grid;place-items:center;box-shadow:var(--shadow);flex:0 0 auto}
+  .brand h1{margin:0;font-size:26px;font-weight:700;letter-spacing:-.01em}
+  .brand p{margin:2px 0 0;font-size:13px;color:#bfe7cf}
+
+  .card{background:var(--panel);border-radius:20px;padding:16px;box-shadow:var(--shadow);margin-bottom:14px}
+  .card h2{margin:0 0 4px;font-size:18px}
+  .card .sub{color:var(--ink-soft);font-size:13px;margin:0 0 12px}
+
+  .routes{display:grid;gap:10px}
+  .route-row{
+    display:flex;align-items:center;gap:12px;border:2px solid var(--line);border-radius:16px;padding:11px 12px;
+    cursor:pointer;background:#fff;transition:border-color .15s,background .15s;text-align:left;width:100%;font-family:inherit;
+  }
+  .route-row:active{transform:scale(.995)}
+  .route-row.sel{border-color:var(--green);background:var(--green-l)}
+  .route-row.locked{opacity:.68;cursor:default}
+  .route-emoji{width:46px;height:46px;border-radius:12px;display:grid;place-items:center;font-size:24px;flex:0 0 auto}
+  .route-meta{flex:1;min-width:0}
+  .route-meta b{font-family:Fredoka;font-size:16px;display:block}
+  .route-meta span{font-size:12px;color:var(--ink-soft)}
+  .route-tag{font-size:12px;font-weight:700;padding:5px 9px;border-radius:999px;white-space:nowrap}
+  .tag-lock{background:#fde8e5;color:var(--red)}
+  .tag-ok{background:var(--green-l);color:var(--green-d)}
+
+  .upg{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--line)}
+  .upg:first-of-type{border-top:none}
+  .upg .uic{width:40px;height:40px;border-radius:11px;background:var(--panel-2);display:grid;place-items:center;font-size:21px;flex:0 0 auto}
+  .upg .um{flex:1;min-width:0}
+  .upg .um b{font-family:Fredoka;font-size:15px;display:block}
+  .upg .um .pips{display:flex;gap:4px;margin-top:5px}
+  .pip{width:20px;height:7px;border-radius:3px;background:var(--line)}
+  .pip.on{background:var(--green)}
+  .buybtn{border:none;border-radius:12px;background:var(--green);color:#fff;font-family:Fredoka;font-weight:600;font-size:13px;padding:10px 12px;cursor:pointer;white-space:nowrap}
+  .buybtn[disabled]{background:var(--line);color:var(--ink-soft);cursor:default}
+  .buybtn.maxed{background:var(--panel-2);color:var(--green-d)}
+
+  .bigbtn{
+    width:100%;border:none;border-radius:18px;background:var(--green);color:#fff;
+    font-family:Fredoka;font-weight:700;font-size:19px;padding:18px;cursor:pointer;box-shadow:var(--shadow);
+    display:flex;align-items:center;justify-content:center;gap:10px;
+  }
+  .bigbtn:active{transform:scale(.99)}
+  .bigbtn.dark{background:var(--ink)}
+
+  /* summary */
+  .sumline{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:9px 0;border-top:1px dashed var(--line);font-size:14.5px}
+  .sumline:first-of-type{border-top:none}
+  .sumline .d{color:var(--ink-soft);display:flex;gap:8px;align-items:center}
+  .sumline .a{font-family:Fredoka;font-weight:600;font-variant-numeric:tabular-nums}
+  .sumline.pos .a{color:var(--green-d)}
+  .sumline.neg .a{color:var(--red)}
+  .sumline.total{border-top:2px solid var(--ink);margin-top:6px;padding-top:12px;font-size:17px}
+  .sumline.total .a{font-size:20px}
+  .mini{font-size:12px;color:var(--ink-soft);margin-left:28px}
+  .sum-hero{text-align:center;padding:4px 0 10px}
+  .sum-hero .em{font-size:40px}
+  .sum-hero h2{margin:6px 0 2px;font-size:22px}
+  .sum-hero p{margin:0;color:var(--ink-soft);font-size:13px}
+
+  .foot{color:#9fd0b4;text-align:center;font-size:11.5px;margin:10px 0 2px;line-height:1.5}
+  .helplist{margin:8px 0 0;padding:0;list-style:none;display:grid;gap:9px}
+  .helplist li{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(--ink-soft)}
+  .helplist .he{font-size:18px;line-height:1;flex:0 0 auto}
+  .helplist b{color:var(--ink)}
+
+  .toast{
+    position:absolute;left:50%;top:112px;transform:translateX(-50%) translateY(-6px);
+    background:var(--ink);color:#fff;padding:9px 16px;border-radius:999px;font-weight:600;font-size:14px;
+    box-shadow:var(--shadow);opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;white-space:nowrap;z-index:5;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .toast.good{background:var(--green-d)}
+  .toast.bad{background:var(--red)}
+</style>
+
+<div id="app">
+  <canvas id="cv"></canvas>
+
+  <div id="hud">
+    <div class="topbar">
+      <div style="display:flex;gap:8px">
+        <div class="stat money"><span class="k">Kassa</span><span class="v" id="hudMoney">0 kr</span></div>
+        <div class="stat"><span class="k">Dag</span><span class="v" id="hudDay">1</span></div>
+      </div>
+      <div class="stat route"><span class="k" id="hudRouteK">Körtur</span><span class="v" id="hudRoute">Stad</span></div>
+    </div>
+    <div class="progwrap" id="progwrap">
+      <span class="lbl" id="progLbl">0 / 0</span>
+      <div class="progbar"><i id="progFill"></i></div>
+      <span class="lbl" id="clock">0:00</span>
+    </div>
+    <button class="endbtn" id="endBtn">Avsluta passet</button>
+    <div class="hint" id="hint">Dra var som helst för att köra · kör fram till ett kärl</div>
+    <div class="toast" id="toast"></div>
+  </div>
+
+  <div id="ctx"></div>
+
+  <!-- GARAGE / MENU -->
+  <div class="overlay" id="garage">
+    <div class="sheet">
+      <div class="brand">
+        <div class="logo"><svg width="30" height="30" viewBox="0 0 30 30" fill="none"><rect x="2" y="12" width="14" height="9" rx="1.5" fill="#fff"/><path d="M16 14h6l4 3.5V21h-10z" fill="#fff"/><circle cx="8" cy="22.5" r="2.4" fill="#15241f"/><circle cx="21" cy="22.5" r="2.4" fill="#15241f"/><path d="M5 9l2.2 2.2M8 7.5v3M11 9l-2.2 2.2" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg></div>
+        <div><h1>Sopbilspasset</h1><p>Kör rutten · töm kärlen · rapportera avvikelserna</p></div>
+      </div>
+
+      <div class="card">
+        <h2>Dagens körtur</h2>
+        <p class="sub">Välj vilket område du kör idag. Nya områden låser du upp med intjänade pengar.</p>
+        <div class="routes" id="routeList"></div>
+      </div>
+
+      <div class="card">
+        <h2>Rusta upp bilen 🔧</h2>
+        <p class="sub">Pengarna du tjänar lägger du på sopbilen — snabbare, stadigare och effektivare.</p>
+        <div id="upgList"></div>
+      </div>
+
+      <div class="card">
+        <h2>Så funkar passet</h2>
+        <ul class="helplist">
+          <li><span class="he">♻️</span><span><b>Töm kärl.</b> Kör fram till ett grönt kärl och tryck <b>Töm kärl</b> för betalt.</span></li>
+          <li><span class="he">⚠️</span><span><b>Rapportera avvikelse.</b> Vissa kärl har problem — läs skylten och välj rätt avvikelse (ej utställt, hinder i vägen, tomt kärl eller arbetsmiljö).</span></li>
+          <li><span class="he">☎️</span><span><b>Missa inget.</b> Varje avvikelse du missar eller rapporterar fel blir ett samtal till <b>kundservice</b> som dras från kassan.</span></li>
+          <li><span class="he">🌉</span><span><b>Kör smart.</b> Vägar och broar är snabba, gräs och grus är segt, vatten stoppar dig.</span></li>
+        </ul>
+      </div>
+
+      <button class="bigbtn" id="startBtn">▶ Starta arbetspasset</button>
+      <p class="foot" id="garageFoot"></p>
+    </div>
+  </div>
+
+  <!-- DAY SUMMARY -->
+  <div class="overlay" id="summary">
+    <div class="sheet">
+      <div class="card">
+        <div class="sum-hero">
+          <div class="em" id="sumEmoji">✅</div>
+          <h2 id="sumTitle">Passet avklarat!</h2>
+          <p id="sumSub">Så här gick dagen</p>
+        </div>
+        <div id="sumLines"></div>
+      </div>
+      <button class="bigbtn" id="toGarage">Till garaget →</button>
+      <p class="foot">Pengarna läggs i kassan. Rusta upp bilen och kör en ny dag.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+(function(){
+// =========================================================================
+//  Sopbilspasset — top-down garbage-truck route game
+// =========================================================================
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+let W=0,H=0,DPR=1;
+function resize(){
+  DPR = Math.min(window.devicePixelRatio||1, 2);
+  const r = cv.getBoundingClientRect();
+  W = Math.max(1, Math.round(r.width));
+  H = Math.max(1, Math.round(r.height));
+  cv.width = Math.round(W*DPR); cv.height = Math.round(H*DPR);
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+window.addEventListener('resize', resize);
+
+// ---------------- persistence ----------------
+const SAVE_KEY = 'sopbil.save.v1';
+const DEFAULT_SAVE = { money:0, day:1, upg:{motor:0,dack:0,komp:0}, unlocked:{stad:true,land:false,oar:false}, lastRoute:'stad' };
+function loadSave(){
+  try{ const s = JSON.parse(localStorage.getItem(SAVE_KEY)); if(s&&typeof s.money==='number'){ return Object.assign({},DEFAULT_SAVE, s, {upg:Object.assign({},DEFAULT_SAVE.upg,s.upg), unlocked:Object.assign({},DEFAULT_SAVE.unlocked,s.unlocked)});} }catch(e){}
+  return JSON.parse(JSON.stringify(DEFAULT_SAVE));
+}
+let save = loadSave();
+function persist(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(save)); }catch(e){} }
+
+// ---------------- upgrade defs ----------------
+const UPG = {
+  motor:{ name:'Motor', ic:'⚙️', desc:'Högre toppfart', costs:[160,320,540], max:3 },
+  dack :{ name:'Däck & fäste', ic:'🛞', desc:'Snabbare acceleration & styrning', costs:[140,280,460], max:3 },
+  komp :{ name:'Komprimator', ic:'🗜️', desc:'Snabbare tömning & bättre betalt', costs:[200,380], max:2 },
+};
+const ROUTE_UNLOCK = { land:260, oar:520 };
+
+function motorMax(){ return 205 + save.upg.motor*42; }        // px/s
+function accelRate(){ return 7.0 + save.upg.dack*1.7; }        // approach factor
+function turnRate(){ return 7.5 + save.upg.dack*1.3; }
+function emptyTime(){ return 0.85 - save.upg.komp*0.18; }      // seconds
+function payMult(){ return 1 + save.upg.komp*0.12; }
+
+// ---------------- route generation ----------------
+const DEV_TYPES = ['ej','hinder','tom','arbmiljo'];
+const DEV_INFO = {
+  ej:      { label:'Ej utställt',        emoji:'🚫', color:'#7a6cd8', scene:'Inget kärl ute vid tomtgränsen — kunden har inte ställt fram det.' },
+  hinder:  { label:'Hinder i vägen',      emoji:'🚧', color:'#e8a62e', scene:'En bil/kon blockerar kärlet, det går inte att komma fram.' },
+  tom:     { label:'Tomt kärl',           emoji:'🪣', color:'#2f7fd1', scene:'Locket är öppet och kärlet är helt tomt.' },
+  arbmiljo:{ label:'Arbetsmiljöproblem',  emoji:'⚠️', color:'#e2483a', scene:'Halka / lös hund / tungt dragläge — osäker arbetsmiljö.' },
+};
+
+function rnd(a,b){ return a + Math.random()*(b-a); }
+function pick(arr){ return arr[(Math.random()*arr.length)|0]; }
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [a[i],a[j]]=[a[j],a[i]]; } return a; }
+function inRect(x,y,r,pad=0){ return x>=r.x-pad && x<=r.x+r.w+pad && y>=r.y-pad && y<=r.y+r.h+pad; }
+
+function makeRoute(id){
+  const R = { id, roads:[], bridges:[], water:[], islands:[], obstacles:[], decos:[], ground:'#8ec16a', bins:[] };
+  const spots = []; // {x,y}
+  const RW = 108;
+
+  function hRoad(x0,x1,y){ R.roads.push({x:x0,y:y-RW/2,w:x1-x0,h:RW,dir:'h'}); return {x0,x1,y}; }
+  function vRoad(y0,y1,x){ R.roads.push({x:x-RW/2,y:y0,w:RW,h:y1-y0,dir:'v'}); return {y0,y1,x}; }
+  function binsAlongH(r,side,step=215){ for(let x=r.x0+150;x<=r.x1-120;x+=step){ spots.push({x, y:r.y + side*72}); } }
+  function binsAlongV(r,side,step=215){ for(let y=r.y0+150;y<=r.y1-120;y+=step){ spots.push({x:r.x + side*72, y}); } }
+
+  if(id==='stad'){
+    R.world={w:2520,h:1680}; R.ground='#9dc877';
+    const hs=[260,700,1140,1540].map(y=>hRoad(120,2400,y));
+    const vs=[300,860,1420,1980,2380].map(x=>vRoad(120,1560,x));
+    // buildings fill blocks
+    const cols=[120,300,860,1420,1980,2380,2400];
+    const rows=[120,260,700,1140,1540,1560];
+    const bcolors=['#d9c7a8','#c9b394','#e0d0bb','#cdbda0','#d6c3a2'];
+    for(let ci=0;ci<cols.length-1;ci++){ for(let ri=0;ri<rows.length-1;ri++){
+      const x0=cols[ci]+58, x1=cols[ci+1]-58, y0=rows[ri]+58, y1=rows[ri+1]-58;
+      if(x1-x0<80||y1-y0<80) continue;
+      // split big block into 1-2 buildings
+      const bw=x1-x0, bh=y1-y0;
+      const parts = bw>260 ? 2:1;
+      for(let p=0;p<parts;p++){
+        const px=x0 + p*(bw/parts) + 6, pw=bw/parts-12;
+        R.obstacles.push({x:px,y:y0,w:pw,h:bh, kind:'bld', c:pick(bcolors)});
+      }
+    }}
+    hs.forEach((r,i)=>binsAlongH(r, i%2?-1:1));
+    vs.forEach((r,i)=>{ if(i%2) binsAlongV(r, 1); });
+    R.start={x:300,y:260};
+  }
+  else if(id==='land'){
+    R.world={w:2900,h:2050}; R.ground='#86bf63';
+    const main=hRoad(140,2760,1030);
+    const b1=vRoad(220,1030,640);
+    const b2=vRoad(1030,1840,2180);
+    const b3=hRoad(1240,2760,1620);
+    // river + bridge
+    R.water.push({x:1320,y:120,w:92,h:1860});
+    R.bridges.push({x:1300,y:976,w:132,h:108});
+    R.roads.push({x:1300,y:976,w:132,h:108,dir:'h'}); // bridge drivable/fast
+    // fields & trees (decor only)
+    R.decos.push({t:'field',x:200,y:150,w:950,h:720,c:'#d8c56b'});
+    R.decos.push({t:'field',x:1500,y:140,w:1180,h:760,c:'#c6d87a'});
+    R.decos.push({t:'field',x:160,y:1200,w:1050,h:720,c:'#cdd97f'});
+    R.decos.push({t:'field',x:1500,y:1720,w:1200,h:300,c:'#d8c56b'});
+    for(let i=0;i<46;i++){ const x=rnd(140,2760),y=rnd(140,1960); let ok=true;
+      for(const r of R.roads) if(inRect(x,y,r,70)){ok=false;break;}
+      if(ok && !inRect(x,y,R.water[0],40)) R.decos.push({t:'tree',x,y,r:rnd(16,26)});
+    }
+    binsAlongH(main,1,250); binsAlongH(main,-1,330);
+    binsAlongV(b1,-1,250); binsAlongV(b2,1,260); binsAlongH(b3,-1,260);
+    R.start={x:300,y:1030};
+  }
+  else { // oar — archipelago / bridges, ground is sea
+    R.world={w:2700,h:2060}; R.ground='#2a86b0'; R.sea=true;
+    const isl=[
+      {x:90,y:170,w:860,h:760},    // A top-left
+      {x:1180,y:120,w:780,h:640},  // B top-right
+      {x:1560,y:1080,w:1040,h:820},// C bottom-right
+      {x:180,y:1150,w:900,h:720},  // D bottom-left
+    ];
+    isl.forEach(i=>R.islands.push(i));
+    // bridges connecting islands (also roads)
+    const brs=[
+      {x:930,y:470,w:270,h:96},    // A-B
+      {x:1690,y:720,w:104,h:380},  // B-C
+      {x:1020,y:1430,w:560,h:98},  // D-C
+      {x:470,y:910,w:102,h:260},   // A-D
+    ];
+    brs.forEach(b=>{ R.bridges.push(b); R.roads.push(Object.assign({dir:b.w>b.h?'h':'v'},b)); });
+    // roads on islands (simple cross per island) + collect bins
+    function islandRoads(i){
+      const cx=i.x+i.w/2, cy=i.y+i.h/2;
+      const hr=hRoad(i.x+70,i.x+i.w-70,cy);
+      const vr=vRoad(i.y+70,i.y+i.h-70,cx);
+      binsAlongH(hr, 1, 240); binsAlongV(vr, -1, 250);
+    }
+    isl.forEach(islandRoads);
+    // a few harbour decos
+    isl.forEach(i=>R.decos.push({t:'sand',x:i.x-18,y:i.y-18,w:i.w+36,h:i.h+36,c:'#e4d8a6'}));
+    R.start={x:isl[0].x+isl[0].w/2, y:isl[0].y+isl[0].h/2};
+  }
+
+  // ---- validate spots & assign types ----
+  const valid = spots.filter(s=>{
+    if(s.x<40||s.y<40||s.x>R.world.w-40||s.y>R.world.h-40) return false;
+    for(const o of R.obstacles) if(inRect(s.x,s.y,o,10)) return false;
+    for(const w of R.water) if(inRect(s.x,s.y,w,0)) return false;
+    if(R.sea){ let on=false; for(const i of R.islands) if(inRect(s.x,s.y,i,6)) on=true; if(!on) return false; }
+    return true;
+  });
+  shuffle(valid);
+  const target = id==='stad'?15 : id==='land'?13 : 14;
+  const chosen = valid.slice(0, Math.min(target, valid.length));
+  // guarantee a spread of deviations (~45%)
+  const devCount = Math.max(4, Math.round(chosen.length*0.45));
+  const devList=[]; let ti=0;
+  for(let i=0;i<devCount;i++){ devList.push(DEV_TYPES[ti%DEV_TYPES.length]); ti++; }
+  shuffle(devList);
+  chosen.forEach((s,i)=>{
+    const dev = i<devCount ? devList[i] : null;
+    R.bins.push({ id:i, x:s.x, y:s.y, dev, status:'pending',
+      side:(s.y%160<80)?1:-1, anim:0, float:[] });
+  });
+  shuffle(R.bins);
+  return R;
+}
+
+// ---------------- game state ----------------
+const ROUTE_NAMES = { stad:'Stad', land:'Landsbygd', oar:'Skärgård & broar' };
+const game = {
+  screen:'garage', route:null, routeId:save.lastRoute||'stad',
+  truck:{x:0,y:0,vx:0,vy:0,ang:-Math.PI/2},
+  cam:{x:0,y:0}, time:0, dayMoney:0, activeBin:null, ctxExpanded:false,
+  lastTs:0, hintT:5,
+};
+
+// ---------------- input ----------------
+const input = { ix:0, iy:0, active:false, pid:-1, keys:{} };
+window.addEventListener('keydown',e=>{ input.keys[e.key.toLowerCase()]=true; });
+window.addEventListener('keyup',e=>{ input.keys[e.key.toLowerCase()]=false; });
+
+let joy=null; // {ox,oy,x,y}
+cv.addEventListener('pointerdown', e=>{
+  if(game.screen!=='play') return;
+  input.active=true; input.pid=e.pointerId;
+  joy={ox:e.clientX, oy:e.clientY, x:e.clientX, y:e.clientY};
+  cv.setPointerCapture(e.pointerId);
+});
+cv.addEventListener('pointermove', e=>{
+  if(!input.active||e.pointerId!==input.pid||!joy) return;
+  joy.x=e.clientX; joy.y=e.clientY;
+  let dx=joy.x-joy.ox, dy=joy.y-joy.oy;
+  const d=Math.hypot(dx,dy), max=70;
+  if(d>max){ dx*=max/d; dy*=max/d; joy.ox=joy.x-dx; joy.oy=joy.y-dy; }
+  input.ix = dx/max; input.iy = dy/max;
+});
+function endPointer(e){ if(e.pointerId===input.pid){ input.active=false; input.ix=0; input.iy=0; joy=null; input.pid=-1; } }
+cv.addEventListener('pointerup', endPointer);
+cv.addEventListener('pointercancel', endPointer);
+
+// ---------------- audio (tiny, optional) ----------------
+let audioOn = true, actx=null;
+function beep(freq,dur,type='sine',vol=0.06){
+  if(!audioOn) return;
+  try{
+    if(!actx) actx=new (window.AudioContext||window.webkitAudioContext)();
+    if(actx.state==='suspended') actx.resume();
+    const o=actx.createOscillator(), g=actx.createGain();
+    o.type=type; o.frequency.value=freq;
+    g.gain.value=vol; o.connect(g); g.connect(actx.destination);
+    const t=actx.currentTime; o.start(t);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur); o.stop(t+dur);
+  }catch(e){}
+}
+
+// ---------------- geometry helpers for driving ----------------
+function canDrive(x,y){
+  const R=game.route;
+  if(x<24||y<24||x>R.world.w-24||y>R.world.h-24) return false;
+  for(const o of R.obstacles) if(inRect(x,y,o,0)) return false;
+  for(const b of R.bridges) if(inRect(x,y,b,4)) return true;
+  if(R.sea){ for(const i of R.islands) if(inRect(x,y,i,4)) return true; return false; }
+  for(const w of R.water) if(inRect(x,y,w,0)) return false;
+  return true;
+}
+function onFast(x,y){
+  const R=game.route;
+  for(const b of R.bridges) if(inRect(x,y,b,4)) return true;
+  for(const r of R.roads) if(inRect(x,y,r,0)) return true;
+  return false;
+}
+
+// ---------------- start a day ----------------
+function startDay(){
+  game.route = makeRoute(game.routeId);
+  const t=game.truck;
+  t.x=game.route.start.x; t.y=game.route.start.y; t.vx=0; t.vy=0; t.ang=-Math.PI/2;
+  game.cam.x=t.x; game.cam.y=t.y;
+  game.time=0; game.dayMoney=0; game.activeBin=null; game.ctxExpanded=false; game.hintT=5;
+  game.screen='play';
+  document.getElementById('garage').classList.remove('show');
+  document.getElementById('summary').classList.remove('show');
+  document.getElementById('endBtn').style.display='block';
+  document.getElementById('hint').style.opacity='1';
+  updateHud();
+  if(actx&&actx.state==='suspended') actx.resume();
+}
+
+// ---------------- bin interaction ----------------
+function floatText(bin,txt,col){ bin.float.push({txt,col,t:0,y:0}); }
+
+function emptyBin(){
+  const b=game.activeBin; if(!b||b.status!=='pending') return;
+  if(b.dev){ // wrong: emptying a problem bin
+    b.status='mishandled';
+    floatText(b,'Fel hantering!','#e2483a'); beep(180,0.25,'square');
+    toast('Det där var en avvikelse — fel!','bad');
+  } else {
+    b.status='emptied'; b.anim=0.001;
+    const pay=Math.round(20*payMult());
+    game.dayMoney+=pay; save.money+=pay;
+    floatText(b,'+'+pay+' kr','#1f7d3a'); beep(660,0.09); setTimeout(()=>beep(880,0.08),70);
+    toast('Kärl tömt  +'+pay+' kr','good');
+  }
+  game.activeBin=null; game.ctxExpanded=false; persist(); updateHud(); checkDone();
+}
+function reportDev(type){
+  const b=game.activeBin; if(!b||b.status!=='pending') return;
+  if(!b.dev){ // false report on a normal bin
+    b.status='mishandled'; floatText(b,'Felaktig anmälan','#e2483a'); beep(180,0.25,'square');
+    toast('Kärlet var helt normalt — fel anmälan','bad');
+    game.activeBin=null; game.ctxExpanded=false; persist(); updateHud(); checkDone(); return;
+  }
+  if(type!==b.dev){ beep(200,0.18,'square'); toast('Fel avvikelse — titta på skylten igen','bad'); return; }
+  b.status='reported';
+  const pay=Math.round(30*payMult());
+  game.dayMoney+=pay; save.money+=pay;
+  floatText(b,'Avvikelse ✓ +'+pay,'#1f7d3a'); beep(620,0.09); setTimeout(()=>beep(820,0.1),80);
+  toast('Avvikelse rapporterad  +'+pay+' kr','good');
+  game.activeBin=null; game.ctxExpanded=false; persist(); updateHud(); checkDone();
+}
+function checkDone(){
+  if(game.route.bins.every(b=>b.status!=='pending')){
+    setTimeout(()=>{ if(game.screen==='play') endDay(true); }, 650);
+  }
+}
+
+// ---------------- end day & summary ----------------
+function endDay(complete){
+  if(game.screen!=='play') return;
+  game.screen='summary';
+  document.getElementById('endBtn').style.display='none';
+  document.getElementById('ctx').classList.remove('show');
+  document.getElementById('hint').style.opacity='0';
+
+  const bins=game.route.bins;
+  const emptied=bins.filter(b=>b.status==='emptied').length;
+  const reported=bins.filter(b=>b.status==='reported').length;
+  const missedDev=bins.filter(b=>b.dev&&(b.status==='pending'||b.status==='mishandled')).length;
+  const missedNormal=bins.filter(b=>!b.dev&&b.status==='pending').length;
+  const falseReport=bins.filter(b=>!b.dev&&b.status==='mishandled').length;
+
+  const incEmpty=Math.round(20*payMult())*emptied;
+  const incDev=Math.round(30*payMult())*reported;
+  const kundPer=60, kundCost=(missedDev+falseReport)*kundPer;
+  // efficiency bonus if finished and quick
+  let bonus=0, bonusTxt='';
+  if(complete){
+    const par = bins.length*10; // seconds
+    if(game.time < par){ bonus=Math.round((par-game.time)*2)+40; bonusTxt='Klar på '+fmtClock(game.time); }
+    else { bonus=40; bonusTxt='Hela rutten körd'; }
+    save.money+=bonus;
+  }
+
+  const net = incEmpty+incDev+bonus-kundCost;
+  save.day += 1; save.lastRoute=game.routeId; persist();
+
+  // build summary UI
+  const ov=document.getElementById('summary');
+  const allHandled = missedDev===0 && missedNormal===0 && falseReport===0;
+  document.getElementById('sumEmoji').textContent = allHandled ? '🏆' : (kundCost>0?'📋':'✅');
+  document.getElementById('sumTitle').textContent = complete ? (allHandled?'Perfekt pass!':'Passet avklarat') : 'Passet avslutat';
+  document.getElementById('sumSub').textContent = allHandled ? 'Inga missade avvikelser — snyggt kört!' : 'Så här gick dagen';
+
+  const L=document.getElementById('sumLines'); L.innerHTML='';
+  function line(cls,ic,label,amount,mini){
+    const d=document.createElement('div'); d.className='sumline '+cls;
+    d.innerHTML=`<span class="d"><span>${ic}</span><span>${label}</span></span><span class="a">${amount}</span>`;
+    L.appendChild(d);
+    if(mini){ const m=document.createElement('div'); m.className='mini'; m.textContent=mini; L.appendChild(m);}
+  }
+  line('pos','♻️',`Tömda kärl ×${emptied}`,'+'+incEmpty+' kr');
+  line('pos','⚠️',`Rapporterade avvikelser ×${reported}`,'+'+incDev+' kr');
+  if(complete) line('pos','⚡',`Effektivitetsbonus`,'+'+bonus+' kr', bonusTxt);
+  if(kundCost>0) line('neg','☎️',`Kundservice ×${missedDev+falseReport}`,'−'+kundCost+' kr','Missade/felrapporterade avvikelser × 60 kr');
+  if(missedNormal>0) line('','🫙',`Ej tömda kärl ×${missedNormal}`,'0 kr','Förlorad intäkt – men ingen kundservice');
+  line('total','','Dagens resultat',(net>=0?'+':'−')+Math.abs(net)+' kr');
+
+  ov.classList.add('show');
+  beep(allHandled?720:520,0.12); setTimeout(()=>beep(allHandled?900:440,0.14),130);
+}
+
+// ---------------- HUD ----------------
+function fmtClock(s){ const m=(s/60)|0, ss=(s%60)|0; return m+':'+String(ss).padStart(2,'0'); }
+function updateHud(){
+  document.getElementById('hudMoney').textContent = Math.round(save.money)+' kr';
+  document.getElementById('hudDay').textContent = save.day;
+  document.getElementById('hudRoute').textContent = ROUTE_NAMES[game.routeId];
+  if(game.route){
+    const done=game.route.bins.filter(b=>b.status!=='pending').length;
+    document.getElementById('progLbl').textContent = done+' / '+game.route.bins.length;
+    document.getElementById('progFill').style.width = (done/game.route.bins.length*100)+'%';
+  }
+}
+function toast(msg,kind){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className='toast '+(kind||'')+' show';
+  clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('show'),1500);
+}
+
+// ---------------- context panel ----------------
+function renderCtx(){
+  const el=document.getElementById('ctx');
+  const b=game.activeBin;
+  if(!b){ el.classList.remove('show'); el._bin=null; return; }
+  const sig = b._sig = b.id+'|'+(game.ctxExpanded?'e':'c');
+  if(el._sig===sig){ return; }
+  el._sig=sig;
+  el.classList.add('show');
+
+  if(game.ctxExpanded){
+    el.innerHTML = `<div class="ctx-dev-title">Vilken avvikelse ser du?</div>
+      <div class="ctx-actions dev"></div>`;
+    const grid=el.querySelector('.ctx-actions');
+    DEV_TYPES.forEach(t=>{
+      const d=DEV_INFO[t];
+      const btn=document.createElement('button');
+      btn.className='btn dev';
+      btn.innerHTML=`<span class="em">${d.emoji}</span>${d.label}`;
+      btn.onclick=()=>reportDev(t);
+      grid.appendChild(btn);
+    });
+    const back=document.createElement('button');
+    back.className='btn back'; back.textContent='← Tillbaka';
+    back.onclick=()=>{ game.ctxExpanded=false; el._sig=null; renderCtx(); };
+    grid.appendChild(back);
+  } else {
+    const isDev=!!b.dev;
+    const info = isDev ? DEV_INFO[b.dev] : null;
+    const ic = isDev ? info.emoji : '♻️';
+    const bg = isDev ? info.color : '#2fa84f';
+    const tt = isDev ? 'Avvikelse vid kärlet' : 'Grönt kärl';
+    const sb = isDev ? info.scene : 'Töm kärlet och kvittera.';
+    el.innerHTML = `
+      <div class="ctx-head">
+        <div class="ctx-ic" style="background:${bg}22;color:${bg}">${ic}</div>
+        <div><div class="ctx-tt">${tt}</div><div class="ctx-sb">${sb}</div></div>
+      </div>
+      <div class="ctx-actions">
+        <button class="btn green" id="btnEmpty">♻️ Töm kärl</button>
+        <button class="btn ghost" id="btnDev">⚠️ Avvikelse</button>
+      </div>`;
+    el.querySelector('#btnEmpty').onclick=emptyBin;
+    el.querySelector('#btnDev').onclick=()=>{ game.ctxExpanded=true; el._sig=null; renderCtx(); };
+  }
+}
+
+// ---------------- update loop ----------------
+function update(dt){
+  const R=game.route, t=game.truck;
+  // input vector (keyboard overrides joystick if pressed)
+  let ix=input.ix, iy=input.iy;
+  const k=input.keys;
+  let kx=(k['arrowright']||k['d']?1:0)-(k['arrowleft']||k['a']?1:0);
+  let ky=(k['arrowdown']||k['s']?1:0)-(k['arrowup']||k['w']?1:0);
+  if(kx||ky){ const m=Math.hypot(kx,ky)||1; ix=kx/m; iy=ky/m; }
+  const inMag=Math.min(1,Math.hypot(ix,iy));
+
+  const fast=onFast(t.x,t.y);
+  const maxV=motorMax()*(fast?1:0.58);
+  const tvx=inMag>0.08 ? (ix/(Math.hypot(ix,iy)||1))*maxV*inMag : 0;
+  const tvy=inMag>0.08 ? (iy/(Math.hypot(ix,iy)||1))*maxV*inMag : 0;
+  const ar=accelRate();
+  t.vx += (tvx-t.vx)*Math.min(1,ar*dt);
+  t.vy += (tvy-t.vy)*Math.min(1,ar*dt);
+
+  // move with axis-separated collision (slide along walls/shores)
+  let nx=t.x+t.vx*dt, ny=t.y+t.vy*dt;
+  if(canDrive(nx,t.y)) t.x=nx; else t.vx*=-0.15;
+  if(canDrive(t.x,ny)) t.y=ny; else t.vy*=-0.15;
+
+  const sp=Math.hypot(t.vx,t.vy);
+  if(sp>8){ let desired=Math.atan2(t.vy,t.vx); let da=((desired-t.ang+Math.PI)%(Math.PI*2))-Math.PI; t.ang+=da*Math.min(1,turnRate()*dt); }
+
+  // camera
+  game.cam.x += (t.x-game.cam.x)*Math.min(1,8*dt);
+  game.cam.y += (t.y-game.cam.y)*Math.min(1,8*dt);
+
+  // nearest pending bin for interaction
+  let near=null, nd=1e9;
+  for(const b of R.bins){ if(b.status!=='pending') continue; const d=Math.hypot(b.x-t.x,b.y-t.y); if(d<nd){nd=d;near=b;} }
+  const canInteract = near && nd<78 && sp<55;
+  if(canInteract){ if(game.activeBin!==near){ game.ctxExpanded=false; } game.activeBin=near; }
+  else { if(game.activeBin){ game.ctxExpanded=false; } game.activeBin=null; }
+  renderCtx();
+
+  // bin anims & floats
+  for(const b of R.bins){
+    if(b.anim>0){ b.anim+=dt; if(b.anim>0.6) b.anim=0; }
+    for(let i=b.float.length-1;i>=0;i--){ const f=b.float[i]; f.t+=dt; f.y-=28*dt; if(f.t>1.3) b.float.splice(i,1); }
+  }
+
+  game.time+=dt;
+  // clock + hint fade
+  document.getElementById('clock').textContent=fmtClock(game.time);
+  if(game.hintT>0){ game.hintT-=dt; if(game.hintT<=0) document.getElementById('hint').style.opacity='0'; }
+}
+
+// ---------------- render ----------------
+function roundRect(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+
+function draw(){
+  const R=game.route, t=game.truck;
+  ctx.clearRect(0,0,W,H);
+  // ground base
+  ctx.fillStyle=R.ground; ctx.fillRect(0,0,W,H);
+  const ox=game.cam.x-W/2, oy=game.cam.y-H/2;
+  ctx.save(); ctx.translate(-ox,-oy);
+
+  // sea texture for archipelago
+  if(R.sea){
+    ctx.fillStyle='#2f90bb';
+    for(let gx=0;gx<R.world.w;gx+=140){ for(let gy=((gx/140)|0)%2*70;gy<R.world.h;gy+=140){ ctx.globalAlpha=.25; ctx.beginPath(); ctx.arc(gx,gy,26,0,6.3); ctx.fill(); } }
+    ctx.globalAlpha=1;
+  }
+  // islands
+  for(const i of R.islands){ ctx.fillStyle='#8ec16a'; roundRect(i.x,i.y,i.w,i.h,34); ctx.fill(); ctx.fillStyle='#e8dcab'; ctx.globalAlpha=.5; roundRect(i.x-2,i.y-2,i.w+4,i.h+4,36); ctx.fill(); ctx.globalAlpha=1; ctx.fillStyle='#8ec16a'; roundRect(i.x,i.y,i.w,i.h,34); ctx.fill(); }
+  // decos (fields, sand, trees)
+  for(const d of R.decos){
+    if(d.t==='field'){ ctx.fillStyle=d.c; roundRect(d.x,d.y,d.w,d.h,26); ctx.fill();
+      ctx.strokeStyle='rgba(0,0,0,.05)'; ctx.lineWidth=2; for(let lx=d.x+20;lx<d.x+d.w;lx+=26){ ctx.beginPath(); ctx.moveTo(lx,d.y+8); ctx.lineTo(lx,d.y+d.h-8); ctx.stroke(); } }
+    else if(d.t==='sand'){ /* already under islands */ }
+  }
+  // water rects (rivers)
+  for(const w of R.water){ ctx.fillStyle='#3a9bc4'; roundRect(w.x,w.y,w.w,w.h,16); ctx.fill(); }
+
+  // roads
+  for(const r of R.roads){
+    ctx.fillStyle='#53585c'; ctx.fillRect(r.x,r.y,r.w,r.h);
+    ctx.fillStyle='#6a7075'; if(r.dir==='h') ctx.fillRect(r.x,r.y,r.w,4), ctx.fillRect(r.x,r.y+r.h-4,r.w,4); else ctx.fillRect(r.x,r.y,4,r.h), ctx.fillRect(r.x+r.w-4,r.y,4,r.h);
+  }
+  // road dashes
+  ctx.strokeStyle='#e8c84a'; ctx.lineWidth=4; ctx.setLineDash([22,20]);
+  for(const r of R.roads){ ctx.beginPath(); if(r.dir==='h'){ ctx.moveTo(r.x+6,r.y+r.h/2); ctx.lineTo(r.x+r.w-6,r.y+r.h/2); } else { ctx.moveTo(r.x+r.w/2,r.y+6); ctx.lineTo(r.x+r.w/2,r.y+r.h-6); } ctx.stroke(); }
+  ctx.setLineDash([]);
+  // bridges — plank overlay + rails
+  for(const b of R.bridges){
+    ctx.fillStyle='#9a6b3f'; roundRect(b.x,b.y,b.w,b.h,6); ctx.fill();
+    ctx.fillStyle='#8a5d35'; const horiz=b.w>b.h;
+    if(horiz){ for(let px=b.x+6;px<b.x+b.w;px+=16) ctx.fillRect(px,b.y+4,3,b.h-8); ctx.fillStyle='#6f4a2a'; ctx.fillRect(b.x,b.y-3,b.w,5); ctx.fillRect(b.x,b.y+b.h-2,b.w,5); }
+    else { for(let py=b.y+6;py<b.y+b.h;py+=16) ctx.fillRect(b.x+4,py,b.w-8,3); ctx.fillStyle='#6f4a2a'; ctx.fillRect(b.x-3,b.y,5,b.h); ctx.fillRect(b.x+b.w-2,b.y,5,b.h); }
+  }
+  // trees (after roads so they overlap grass only)
+  for(const d of R.decos){ if(d.t==='tree'){ ctx.fillStyle='rgba(0,0,0,.14)'; ctx.beginPath(); ctx.ellipse(d.x+4,d.y+d.r*0.7,d.r*0.9,d.r*0.5,0,0,6.3); ctx.fill(); ctx.fillStyle='#4e8f3f'; ctx.beginPath(); ctx.arc(d.x,d.y,d.r,0,6.3); ctx.fill(); ctx.fillStyle='#5ba24a'; ctx.beginPath(); ctx.arc(d.x-d.r*0.3,d.y-d.r*0.3,d.r*0.6,0,6.3); ctx.fill(); } }
+  // buildings
+  for(const o of R.obstacles){
+    ctx.fillStyle='rgba(0,0,0,.12)'; roundRect(o.x+5,o.y+7,o.w,o.h,8); ctx.fill();
+    ctx.fillStyle=o.c||'#d6c3a2'; roundRect(o.x,o.y,o.w,o.h,8); ctx.fill();
+    ctx.fillStyle='rgba(0,0,0,.07)'; roundRect(o.x,o.y,o.w,14,8); ctx.fill();
+    // windows
+    ctx.fillStyle='rgba(255,255,255,.5)';
+    for(let wx=o.x+14;wx<o.x+o.w-16;wx+=34){ for(let wy=o.y+24;wy<o.y+o.h-18;wy+=34){ ctx.fillRect(wx,wy,16,20); } }
+  }
+
+  // bins
+  for(const b of R.bins) drawBin(b);
+  // active bin highlight ring
+  if(game.activeBin){ const b=game.activeBin; ctx.strokeStyle='rgba(255,255,255,.9)'; ctx.lineWidth=3; ctx.setLineDash([8,8]); ctx.lineDashOffset=-(game.time*30)%16; ctx.beginPath(); ctx.arc(b.x,b.y,30,0,6.3); ctx.stroke(); ctx.setLineDash([]); }
+
+  // truck
+  drawTruck(t);
+
+  // float texts
+  ctx.textAlign='center'; ctx.font='700 15px Fredoka, sans-serif';
+  for(const b of R.bins){ for(const f of b.float){ ctx.globalAlpha=Math.max(0,1-f.t/1.3); ctx.fillStyle='#fff'; ctx.lineWidth=3; ctx.strokeStyle='rgba(0,0,0,.35)'; ctx.strokeText(f.txt,b.x,b.y-26+f.y); ctx.fillStyle=f.col; ctx.fillText(f.txt,b.x,b.y-26+f.y); } }
+  ctx.globalAlpha=1;
+
+  ctx.restore();
+
+  // off-screen bin arrows (guide to remaining bins)
+  drawOffscreenArrows(ox,oy);
+  // joystick
+  if(joy){ drawJoystick(); }
+}
+
+function drawBin(b){
+  const x=b.x, y=b.y;
+  // shadow
+  ctx.fillStyle='rgba(0,0,0,.16)'; ctx.beginPath(); ctx.ellipse(x,y+14,15,6,0,0,6.3); ctx.fill();
+  if(b.status==='emptied'||b.status==='reported'){
+    // handled: faded checkmark marker
+    ctx.fillStyle='rgba(255,255,255,.75)'; ctx.beginPath(); ctx.arc(x,y,12,0,6.3); ctx.fill();
+    ctx.strokeStyle='#1f7d3a'; ctx.lineWidth=3; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(x-5,y); ctx.lineTo(x-1,y+4); ctx.lineTo(x+6,y-5); ctx.stroke();
+    return;
+  }
+  if(b.status==='mishandled'){
+    ctx.fillStyle='rgba(226,72,58,.85)'; roundRect(x-11,y-13,22,26,5); ctx.fill();
+    ctx.fillStyle='#fff'; ctx.font='700 15px Fredoka'; ctx.textAlign='center'; ctx.fillText('✕',x,y+5); return;
+  }
+  const isDev=!!b.dev;
+  // body color
+  const bodyC = isDev ? '#4f5a55' : '#2fa84f';
+  // bin body
+  const squeeze = b.anim>0 ? Math.sin(b.anim*10)*2 : 0;
+  ctx.fillStyle=bodyC; roundRect(x-11, y-12+squeeze, 22, 25-squeeze, 4); ctx.fill();
+  // lid
+  ctx.fillStyle = isDev && b.dev==='tom' ? '#7fb6dd' : (isDev?'#3c4541':'#25843e');
+  if(isDev && (b.dev==='tom')){ // open lid
+    ctx.save(); ctx.translate(x-11,y-12); ctx.rotate(-0.7); ctx.fillStyle='#3c4541'; roundRect(0,-5,24,6,2); ctx.fill(); ctx.restore();
+    ctx.fillStyle='#2b3330'; ctx.fillRect(x-8,y-9,16,8); // dark empty interior
+  } else {
+    ctx.fillStyle=isDev?'#3c4541':'#25843e'; roundRect(x-12,y-16,24,7,3); ctx.fill();
+  }
+  // wheels hint
+  ctx.fillStyle='rgba(0,0,0,.4)'; ctx.fillRect(x-9,y+11,4,3); ctx.fillRect(x+5,y+11,4,3);
+
+  // deviation marker above
+  if(isDev){
+    const info=DEV_INFO[b.dev];
+    const bob=Math.sin(game.time*3+b.id)*2;
+    ctx.fillStyle=info.color; ctx.beginPath(); ctx.arc(x,y-30+bob,12,0,6.3); ctx.fill();
+    ctx.fillStyle='#fff'; ctx.font='700 13px Fredoka'; ctx.textAlign='center'; ctx.fillText('!',x,y-25.5+bob);
+    // scene prop
+    drawDevProp(b,x,y);
+  }
+}
+function drawDevProp(b,x,y){
+  if(b.dev==='hinder'){ // cone in front
+    ctx.fillStyle='#e8732e'; ctx.beginPath(); ctx.moveTo(x+16,y+10); ctx.lineTo(x+22,y+10); ctx.lineTo(x+19,y-2); ctx.closePath(); ctx.fill(); ctx.fillStyle='#fff'; ctx.fillRect(x+17,y+3,4,2);
+  } else if(b.dev==='ej'){ // dashed empty curb spot (bin is small/absent look) + little house
+    ctx.strokeStyle='rgba(255,255,255,.8)'; ctx.setLineDash([4,4]); ctx.lineWidth=2; ctx.strokeRect(x-10,y-10,20,22); ctx.setLineDash([]);
+    ctx.fillStyle='#b98f6a'; ctx.fillRect(x-30,y-6,16,14); ctx.fillStyle='#8a5d35'; ctx.beginPath(); ctx.moveTo(x-31,y-6); ctx.lineTo(x-22,y-14); ctx.lineTo(x-13,y-6); ctx.closePath(); ctx.fill();
+  } else if(b.dev==='arbmiljo'){ // warning triangle on ground
+    ctx.fillStyle='#e8c22e'; ctx.beginPath(); ctx.moveTo(x+18,y+12); ctx.lineTo(x+28,y+12); ctx.lineTo(x+23,y+2); ctx.closePath(); ctx.fill(); ctx.fillStyle='#15241f'; ctx.font='700 9px Fredoka'; ctx.textAlign='center'; ctx.fillText('!',x+23,y+11);
+  }
+}
+
+function drawTruck(t){
+  ctx.save(); ctx.translate(t.x,t.y); ctx.rotate(t.ang);
+  // shadow
+  ctx.fillStyle='rgba(0,0,0,.22)'; roundRect(-22,-13,46,28,7); ctx.fill();
+  // hopper (back)
+  ctx.fillStyle='#1f7d3a'; roundRect(-24,-14,24,28,5); ctx.fill();
+  ctx.fillStyle='#17632e'; roundRect(-24,-14,8,28,5); ctx.fill(); // tailgate
+  // body
+  ctx.fillStyle='#2fa84f'; roundRect(-2,-13,20,26,5); ctx.fill();
+  // cab
+  ctx.fillStyle='#38bd5b'; roundRect(14,-12,12,24,5); ctx.fill();
+  // windshield
+  ctx.fillStyle='#bfe9ff'; roundRect(22,-9,5,18,2); ctx.fill();
+  // warning stripe
+  ctx.fillStyle='#e8c22e'; ctx.fillRect(-2,-14,4,28);
+  ctx.fillStyle='rgba(255,255,255,.85)'; ctx.fillRect(-20,-2,14,4);
+  // wheels
+  ctx.fillStyle='#15241f'; roundRect(-20,-17,8,5,2); ctx.fill(); roundRect(-20,12,8,5,2); ctx.fill(); roundRect(10,-17,8,5,2); ctx.fill(); roundRect(10,12,8,5,2); ctx.fill();
+  // beacon blink
+  if(((game.time*2)|0)%2===0){ ctx.fillStyle='#ffd34d'; ctx.beginPath(); ctx.arc(16,0,3,0,6.3); ctx.fill(); }
+  ctx.restore();
+}
+
+function drawOffscreenArrows(ox,oy){
+  const pad=46;
+  for(const b of game.route.bins){
+    if(b.status!=='pending') continue;
+    const sx=b.x-ox, sy=b.y-oy;
+    if(sx>-10&&sx<W+10&&sy>-10&&sy<H+10) continue;
+    const cx=W/2, cy=H/2;
+    let ang=Math.atan2(sy-cy,sx-cx);
+    const ax=cx+Math.cos(ang)*(Math.min(W,H)/2-pad);
+    const ay=cy+Math.sin(ang)*(Math.min(W,H)/2-pad);
+    ctx.save(); ctx.translate(ax,ay); ctx.rotate(ang);
+    ctx.fillStyle = b.dev ? DEV_INFO[b.dev].color : 'rgba(47,168,79,.95)';
+    ctx.beginPath(); ctx.moveTo(10,0); ctx.lineTo(-6,-7); ctx.lineTo(-6,7); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+}
+
+function drawJoystick(){
+  const r=70;
+  ctx.beginPath(); ctx.arc(joy.ox,joy.oy,r,0,6.3); ctx.fillStyle='rgba(255,255,255,.14)'; ctx.fill(); ctx.strokeStyle='rgba(255,255,255,.4)'; ctx.lineWidth=2; ctx.stroke();
+  ctx.beginPath(); ctx.arc(joy.x,joy.y,30,0,6.3); ctx.fillStyle='rgba(255,255,255,.85)'; ctx.fill();
+}
+
+// ---------------- main loop ----------------
+function frame(ts){
+  const dt=Math.min(0.05,(ts-game.lastTs)/1000)||0; game.lastTs=ts;
+  if(game.screen==='play'){ update(dt); draw(); }
+  requestAnimationFrame(frame);
+}
+
+// =========================================================================
+//  Garage UI
+// =========================================================================
+const ROUTE_META = {
+  stad:{emoji:'🏙️',bg:'#dbe9f7',name:'Stad',desc:'Rutnät av gator, hög kärltäthet'},
+  land:{emoji:'🌾',bg:'#eef3d6',name:'Landsbygd',desc:'Långa vägar, åkrar och en bro'},
+  oar :{emoji:'🏝️',bg:'#d4ecf5',name:'Skärgård & broar',desc:'Öar förbundna med broar över vatten'},
+};
+function buildGarage(){
+  updateHud();
+  document.getElementById('hudRouteK').textContent='Körtur';
+  // routes
+  const rl=document.getElementById('routeList'); rl.innerHTML='';
+  ['stad','land','oar'].forEach(id=>{
+    const m=ROUTE_META[id], unlocked=save.unlocked[id];
+    const row=document.createElement('button'); row.className='route-row'+(id===game.routeId&&unlocked?' sel':'')+(unlocked?'':' locked');
+    let right;
+    if(unlocked){ right=`<span class="route-tag tag-ok">${id===game.routeId?'Vald':'Välj'}</span>`; }
+    else { right=`<span class="route-tag tag-lock">🔒 ${ROUTE_UNLOCK[id]} kr</span>`; }
+    row.innerHTML=`<div class="route-emoji" style="background:${m.bg}">${m.emoji}</div>
+      <div class="route-meta"><b>${m.name}</b><span>${m.desc}</span></div>${right}`;
+    row.onclick=()=>{
+      if(unlocked){ game.routeId=id; save.lastRoute=id; persist(); buildGarage(); }
+      else {
+        if(save.money>=ROUTE_UNLOCK[id]){ save.money-=ROUTE_UNLOCK[id]; save.unlocked[id]=true; game.routeId=id; persist(); beep(700,0.12); setTimeout(()=>beep(950,0.12),120); buildGarage(); }
+        else { toast('Du behöver '+ROUTE_UNLOCK[id]+' kr för att låsa upp','bad'); }
+      }
+    };
+    rl.appendChild(row);
+  });
+  // upgrades
+  const ul=document.getElementById('upgList'); ul.innerHTML='';
+  Object.keys(UPG).forEach(key=>{
+    const u=UPG[key], lvl=save.upg[key], maxed=lvl>=u.max;
+    const row=document.createElement('div'); row.className='upg';
+    const pips=Array.from({length:u.max},(_,i)=>`<span class="pip${i<lvl?' on':''}"></span>`).join('');
+    const cost = maxed?0:u.costs[lvl];
+    let btn;
+    if(maxed) btn=`<button class="buybtn maxed" disabled>MAX</button>`;
+    else btn=`<button class="buybtn" data-k="${key}" ${save.money<cost?'disabled':''}>${cost} kr</button>`;
+    row.innerHTML=`<div class="uic">${u.ic}</div>
+      <div class="um"><b>${u.name}</b><span style="font-size:12px;color:var(--ink-soft)">${u.desc}</span><div class="pips">${pips}</div></div>${btn}`;
+    ul.appendChild(row);
+  });
+  ul.querySelectorAll('.buybtn[data-k]').forEach(b=>{
+    b.onclick=()=>{ const key=b.dataset.k, u=UPG[key], cost=u.costs[save.upg[key]];
+      if(save.money>=cost){ save.money-=cost; save.upg[key]++; persist(); beep(760,0.1); setTimeout(()=>beep(1000,0.1),110); buildGarage(); } };
+  });
+  // start button label
+  document.getElementById('startBtn').innerHTML='▶ Starta passet i '+ROUTE_META[game.routeId].name;
+  document.getElementById('garageFoot').textContent='Dag '+save.day+' · Kassa '+Math.round(save.money)+' kr · byggt för mobil 📱';
+}
+
+// ---------------- buttons ----------------
+document.getElementById('startBtn').onclick=()=>{ if(actx&&actx.state==='suspended')actx.resume(); startDay(); };
+document.getElementById('endBtn').onclick=()=>{
+  const pending=game.route.bins.filter(b=>b.status==='pending').length;
+  endDay(pending===0);
+};
+document.getElementById('toGarage').onclick=()=>{
+  game.screen='garage'; document.getElementById('summary').classList.remove('show');
+  document.getElementById('garage').classList.add('show'); buildGarage();
+};
+
+// ---------------- boot ----------------
+function boot(){
+  resize();
+  game.screen='garage';
+  document.getElementById('garage').classList.add('show');
+  buildGarage();
+  requestAnimationFrame(frame);
+}
+// hot reload for open viewers (keeps progress mid-conversation)
+try{
+  if(window.claude&&window.claude.hot){
+    window.claude.hot.snapshot&&window.claude.hot.snapshot(()=>({save}));
+    const data = window.claude.hot.data;
+    if(data&&data.save){ save=Object.assign(JSON.parse(JSON.stringify(DEFAULT_SAVE)),data.save); }
+  }
+}catch(e){}
+boot();
+})();
+</script>
