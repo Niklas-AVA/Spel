@@ -354,7 +354,7 @@ if(window.visualViewport) window.visualViewport.addEventListener('resize', resiz
 
 // ---------------- persistence ----------------
 const SAVE_KEY = 'sopbil.save.v1';
-const DEFAULT_SAVE = { money:0, day:1, upg:{motor:0,dack:0,komp:0}, unlocked:{stad:true,land:false,oar:false}, lastRoute:'stad', best:0, sound:true, zoom:1.25 };
+const DEFAULT_SAVE = { money:0, day:1, upg:{motor:0,dack:0,komp:0}, unlocked:{stad:true,land:false,oar:false}, lastRoute:'stad', best:0, sound:true, zoom:1.45 };
 function loadSave(){
   try{ const s = JSON.parse(localStorage.getItem(SAVE_KEY)); if(s&&typeof s.money==='number'){ return Object.assign({},DEFAULT_SAVE, s, {upg:Object.assign({},DEFAULT_SAVE.upg,s.upg), unlocked:Object.assign({},DEFAULT_SAVE.unlocked,s.unlocked)});} }catch(e){}
   return JSON.parse(JSON.stringify(DEFAULT_SAVE));
@@ -1213,7 +1213,7 @@ document.getElementById('toGarage').onclick=()=>{
 // ---------------- boot ----------------
 function boot(){
   resize();
-  viewZoom = save.zoom || 1.25;
+  viewZoom = save.zoom || 1.45;
   syncSoundBtn();
   game.screen='garage';
   document.getElementById('garage').classList.add('show');
