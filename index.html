@@ -53,12 +53,12 @@
   }
   .stat{
     pointer-events:none;
-    background:rgba(255,255,255,.94);border-radius:14px;padding:7px 12px;
-    box-shadow:var(--shadow);display:flex;flex-direction:column;gap:1px;min-width:70px;
+    background:rgba(255,255,255,.96);border-radius:16px;padding:9px 15px;
+    box-shadow:var(--shadow);display:flex;flex-direction:column;gap:2px;min-width:78px;
   }
-  .stat .k{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);font-weight:600}
-  .stat .v{font-family:Fredoka;font-size:18px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
-  .stat.money .v{color:var(--green-d)}
+  .stat .k{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);font-weight:700}
+  .stat .v{font-family:Fredoka;font-size:23px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+  .stat.money .v{color:var(--green-d);font-size:26px}
   .stat.route{flex:1;min-width:0}
   .stat.route .v{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .topbar .right{display:flex;gap:8px;pointer-events:auto;align-items:center}
@@ -91,7 +91,7 @@
   }
   .progbar{width:150px;height:8px;border-radius:999px;background:var(--line);overflow:hidden}
   .progbar > i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--green),var(--green-d));transition:width .25s}
-  .progwrap .lbl{font-size:12px;font-weight:600;color:var(--ink-soft);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .progwrap .lbl{font-size:14px;font-weight:700;color:var(--ink-soft);font-variant-numeric:tabular-nums;white-space:nowrap}
 
   /* ---------- context / action panel ---------- */
   #ctx{
@@ -217,18 +217,18 @@
   /* ---------- small-screen tuning ---------- */
   .overlay{touch-action:pan-y}
   @media (max-width:430px){
-    .topbar{gap:6px}
-    .ctrls{gap:6px}
-    .stat{min-width:0;padding:6px 10px}
-    .stat .v{font-size:16px}
-    .stat .k{font-size:9px}
-    .stat.route .v{font-size:13px}
+    .topbar{gap:7px}
+    .ctrls{gap:7px}
+    .stat{min-width:0;padding:9px 14px}
+    .stat .v{font-size:22px}
+    .stat.money .v{font-size:25px}
+    .stat .k{font-size:10px}
+    .stat.route{display:none}   /* hide route on phones for space + readability */
     #ctx{left:8px;right:8px;bottom:12px;padding:11px}
     .ctx-actions.dev{gap:8px}
     .btn.dev{padding:18px 4px;font-size:14px}
     .btn.dev .em{font-size:26px}
   }
-  @media (max-width:360px){ .stat.route{display:none} }
   @media (max-height:470px){ .progwrap{display:none} .ctx-head .ctx-sb{display:none} }
 </style>
 
