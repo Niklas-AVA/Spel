@@ -1,3 +1,4 @@
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Sopbilspasset</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -149,8 +150,9 @@
   .routes{display:grid;gap:10px}
   .route-row{
     display:flex;align-items:center;gap:13px;border:2px solid var(--line);border-radius:16px;padding:13px 14px;
-    cursor:pointer;background:#fff;transition:border-color .15s,background .15s;text-align:left;width:100%;font-family:inherit;
+    cursor:pointer;background:#fff;transition:border-color .15s,background .15s;text-align:left;width:100%;font-family:inherit;color:var(--ink);
   }
+  .route-meta b{color:var(--ink)}
   .route-row:active{transform:scale(.995)}
   .route-row.sel{border-color:var(--green);background:var(--green-l)}
   .route-row.locked{opacity:.68;cursor:default}
