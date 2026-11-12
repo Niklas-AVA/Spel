@@ -64,16 +64,16 @@
   .topbar .right{display:flex;gap:8px;pointer-events:auto;align-items:center}
 
   .iconbtn{
-    pointer-events:auto;width:44px;height:44px;border-radius:14px;border:none;
-    background:rgba(255,255,255,.94);box-shadow:var(--shadow);font-size:20px;
+    pointer-events:auto;width:50px;height:50px;border-radius:15px;border:none;
+    background:rgba(255,255,255,.96);box-shadow:var(--shadow);font-size:23px;
     display:grid;place-items:center;cursor:pointer;color:var(--ink);
   }
   .iconbtn:active{transform:scale(.94)}
 
   .ctrls{display:flex;gap:8px;pointer-events:auto;align-items:flex-start;flex:0 0 auto}
-  .zoomctl{position:absolute;right:10px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:9px;pointer-events:none;z-index:4}
-  .zbtn{pointer-events:auto;width:48px;height:48px;border-radius:14px;border:none;background:rgba(255,255,255,.94);box-shadow:var(--shadow);font-family:Fredoka,sans-serif;font-size:25px;font-weight:700;color:var(--ink);display:grid;place-items:center;cursor:pointer;line-height:1}
-  .zbtn:active{transform:scale(.93)}
+  .zoomctl{position:absolute;right:12px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:12px;pointer-events:none;z-index:4}
+  .zbtn{pointer-events:auto;width:62px;height:62px;border-radius:18px;border:2px solid rgba(21,36,31,.08);background:#fff;box-shadow:var(--shadow);font-family:Fredoka,sans-serif;font-size:34px;font-weight:700;color:var(--green-d);display:grid;place-items:center;cursor:pointer;line-height:1}
+  .zbtn:active{transform:scale(.92);background:var(--green-l)}
   .pause-info{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:4px 0 14px}
   .pi{background:var(--panel-2);border-radius:14px;padding:11px 12px}
   .pi .k{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-soft);font-weight:700}
@@ -115,9 +115,9 @@
   .btn:active{transform:scale(.97)}
   .btn.green{background:var(--green);color:#fff}
   .btn.ghost{background:var(--panel-2);color:var(--ink)}
-  .btn.dev{background:var(--panel-2);border:2px solid var(--line);color:var(--ink);font-size:13.5px;padding:16px 6px;flex-direction:column;gap:5px}
+  .btn.dev{background:var(--panel-2);border:2px solid var(--line);color:var(--ink);font-size:15px;padding:20px 6px;flex-direction:column;gap:7px}
   .btn.dev:active{background:var(--green-l);border-color:var(--green)}
-  .btn.dev .em{font-size:23px}
+  .btn.dev .em{font-size:28px}
   .btn.back{background:transparent;color:var(--ink-soft);grid-column:1/-1;padding:8px}
   .ctx-dev-title{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);font-weight:700;margin:2px 2px 8px}
 
@@ -224,8 +224,9 @@
     .stat .k{font-size:9px}
     .stat.route .v{font-size:13px}
     #ctx{left:8px;right:8px;bottom:12px;padding:11px}
-    .ctx-actions.dev{gap:7px}
-    .btn.dev{padding:15px 4px;font-size:12.5px}
+    .ctx-actions.dev{gap:8px}
+    .btn.dev{padding:18px 4px;font-size:14px}
+    .btn.dev .em{font-size:26px}
   }
   @media (max-width:360px){ .stat.route{display:none} }
   @media (max-height:470px){ .progwrap{display:none} .ctx-head .ctx-sb{display:none} }
@@ -354,9 +355,14 @@ if(window.visualViewport) window.visualViewport.addEventListener('resize', resiz
 
 // ---------------- persistence ----------------
 const SAVE_KEY = 'sopbil.save.v1';
-const DEFAULT_SAVE = { money:0, day:1, upg:{motor:0,dack:0,komp:0}, unlocked:{stad:true,land:false,oar:false}, lastRoute:'stad', best:0, sound:true, zoom:1.45 };
+const DEFAULT_SAVE = { money:0, day:1, upg:{motor:0,dack:0,komp:0}, unlocked:{stad:true,land:false,oar:false}, lastRoute:'stad', best:0, sound:true, zoom:1.5, zoomMigrated:true };
 function loadSave(){
-  try{ const s = JSON.parse(localStorage.getItem(SAVE_KEY)); if(s&&typeof s.money==='number'){ return Object.assign({},DEFAULT_SAVE, s, {upg:Object.assign({},DEFAULT_SAVE.upg,s.upg), unlocked:Object.assign({},DEFAULT_SAVE.unlocked,s.unlocked)});} }catch(e){}
+  try{ const s = JSON.parse(localStorage.getItem(SAVE_KEY)); if(s&&typeof s.money==='number'){
+    const m = Object.assign({},DEFAULT_SAVE, s, {upg:Object.assign({},DEFAULT_SAVE.upg,s.upg), unlocked:Object.assign({},DEFAULT_SAVE.unlocked,s.unlocked)});
+    // one-time bump so older, too-small saved zoom levels get the bigger default
+    if(!s.zoomMigrated){ m.zoom = Math.max(1.5, m.zoom||0); m.zoomMigrated = true; }
+    return m;
+  } }catch(e){}
   return JSON.parse(JSON.stringify(DEFAULT_SAVE));
 }
 let save = loadSave();
@@ -1213,7 +1219,7 @@ document.getElementById('toGarage').onclick=()=>{
 // ---------------- boot ----------------
 function boot(){
   resize();
-  viewZoom = save.zoom || 1.45;
+  viewZoom = save.zoom || 1.5;
   syncSoundBtn();
   game.screen='garage';
   document.getElementById('garage').classList.add('show');
