@@ -226,7 +226,7 @@
       <div class="progbar"><i id="progFill"></i></div>
       <span class="lbl" id="clock">0:00</span>
     </div>
-    <div class="hint" id="hint">Dra var som helst för att köra · kör fram till ett kärl</div>
+    <div class="hint" id="hint">Dra var som helst för att köra · tryck på kärlet när du är nära</div>
     <div class="toast" id="toast"></div>
   </div>
 
@@ -255,7 +255,7 @@
       <div class="card">
         <h2>Så funkar passet</h2>
         <ul class="helplist">
-          <li><span class="he">♻️</span><span><b>Töm kärl.</b> Kör fram till ett grönt kärl och tryck <b>Töm kärl</b> för betalt.</span></li>
+          <li><span class="he">♻️</span><span><b>Töm kärl.</b> Kör fram till ett grönt kärl och <b>tryck på det</b> — ett tryck tömmer och ger betalt.</span></li>
           <li><span class="he">⚠️</span><span><b>Rapportera avvikelse.</b> Vissa kärl har problem — läs skylten och välj rätt avvikelse (ej utställt, hinder i vägen, tomt kärl eller arbetsmiljö).</span></li>
           <li><span class="he">☎️</span><span><b>Missa inget.</b> Varje avvikelse du missar eller rapporterar fel blir ett samtal till <b>kundservice</b> som dras från kassan.</span></li>
           <li><span class="he">🌉</span><span><b>Kör smart.</b> Vägar och broar är snabba, gräs och grus är segt, vatten stoppar dig.</span></li>
@@ -491,6 +491,7 @@ let joy=null; // {ox,oy,x,y}
 cv.addEventListener('pointerdown', e=>{
   if(game.screen!=='play') return;
   input.active=true; input.pid=e.pointerId;
+  input.downX=e.clientX; input.downY=e.clientY; input.downT=performance.now(); input.moved=false;
   joy={ox:e.clientX, oy:e.clientY, x:e.clientX, y:e.clientY};
   cv.setPointerCapture(e.pointerId);
 });
@@ -501,10 +502,35 @@ cv.addEventListener('pointermove', e=>{
   const d=Math.hypot(dx,dy), max=70;
   if(d>max){ dx*=max/d; dy*=max/d; joy.ox=joy.x-dx; joy.oy=joy.y-dy; }
   input.ix = dx/max; input.iy = dy/max;
+  if(Math.hypot(e.clientX-input.downX, e.clientY-input.downY) > 12) input.moved=true;
 });
-function endPointer(e){ if(e.pointerId===input.pid){ input.active=false; input.ix=0; input.iy=0; joy=null; input.pid=-1; } }
+function endPointer(e){
+  if(e.pointerId!==input.pid) return;
+  const wasTap = !input.moved && (performance.now()-input.downT < 400);
+  input.active=false; input.ix=0; input.iy=0; joy=null; input.pid=-1;
+  if(wasTap && e.type==='pointerup' && !game.paused) handleTap(e.clientX, e.clientY);
+}
 cv.addEventListener('pointerup', endPointer);
 cv.addEventListener('pointercancel', endPointer);
+
+// Tap a bin (when the truck is close) to empty it / open deviation options
+function handleTap(cx,cy){
+  const R=game.route; if(!R||game.screen!=='play') return;
+  const rect=cv.getBoundingClientRect();
+  const wx=(cx-rect.left)+(game.cam.x-W/2);
+  const wy=(cy-rect.top)+(game.cam.y-H/2);
+  const t=game.truck;
+  let best=null,bd=1e9;
+  for(const b of R.bins){ if(b.status!=='pending') continue;
+    const dTap=Math.hypot(b.x-wx,b.y-wy);
+    if(dTap<54 && dTap<bd){ bd=dTap; best=b; }
+  }
+  if(!best) return;
+  if(Math.hypot(best.x-t.x,best.y-t.y) > 132){ toast('Kör närmare kärlet först','bad'); beep(300,0.1); return; }
+  game.activeBin=best;
+  if(best.dev){ game.ctxExpanded=true; renderCtx(); }
+  else emptyBin();
+}
 
 // ---------------- audio (tiny, optional) ----------------
 let audioOn = save.sound!==false, actx=null;
@@ -749,7 +775,7 @@ function update(dt){
   // nearest pending bin for interaction
   let near=null, nd=1e9;
   for(const b of R.bins){ if(b.status!=='pending') continue; const d=Math.hypot(b.x-t.x,b.y-t.y); if(d<nd){nd=d;near=b;} }
-  const canInteract = near && nd<78 && sp<55;
+  const canInteract = near && nd<98 && sp<170;
   if(canInteract){ if(game.activeBin!==near){ game.ctxExpanded=false; } game.activeBin=near; }
   else { if(game.activeBin){ game.ctxExpanded=false; } game.activeBin=null; }
   renderCtx();
@@ -825,7 +851,15 @@ function draw(){
   // bins
   for(const b of R.bins) drawBin(b);
   // active bin highlight ring
-  if(game.activeBin){ const b=game.activeBin; ctx.strokeStyle='rgba(255,255,255,.9)'; ctx.lineWidth=3; ctx.setLineDash([8,8]); ctx.lineDashOffset=-(game.time*30)%16; ctx.beginPath(); ctx.arc(b.x,b.y,30,0,6.3); ctx.stroke(); ctx.setLineDash([]); }
+  if(game.activeBin){ const b=game.activeBin;
+    const pulse=28+Math.sin(game.time*5)*3;
+    ctx.strokeStyle='rgba(255,255,255,.95)'; ctx.lineWidth=3; ctx.setLineDash([8,8]); ctx.lineDashOffset=-(game.time*30)%16; ctx.beginPath(); ctx.arc(b.x,b.y,pulse,0,6.3); ctx.stroke(); ctx.setLineDash([]);
+    const txt=b.dev?'Tryck: rapportera':'Tryck för att tömma';
+    ctx.font='700 13px Fredoka, sans-serif'; ctx.textAlign='center';
+    const lw=ctx.measureText(txt).width+20;
+    ctx.fillStyle='rgba(20,36,31,.92)'; roundRect(b.x-lw/2, b.y-58, lw, 23, 11); ctx.fill();
+    ctx.fillStyle='#fff'; ctx.fillText(txt, b.x, b.y-42);
+  }
 
   // truck
   drawTruck(t);
