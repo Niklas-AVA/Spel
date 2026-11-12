@@ -131,7 +131,7 @@
 
   /* ---------- overlay menus ---------- */
   .overlay{
-    position:absolute;inset:0;background:linear-gradient(160deg,#143c2a,#0e2a3a);
+    position:absolute;inset:0;z-index:30;background:linear-gradient(160deg,#143c2a,#0e2a3a);
     display:none;overflow:auto;padding:22px 16px calc(26px + env(safe-area-inset-bottom,0px));
     -webkit-overflow-scrolling:touch;
   }
@@ -255,7 +255,7 @@
       <button class="zbtn" id="zoomIn" aria-label="Zooma in">＋</button>
       <button class="zbtn" id="zoomOut" aria-label="Zooma ut">－</button>
     </div>
-    <div class="hint" id="hint">Dra för att köra · kör över gröna kärl · nyp eller ＋/− för att zooma</div>
+    <div class="hint" id="hint">Dra för att köra · håll dig på vägen · kör över gröna kärl · nyp för att zooma</div>
     <div class="toast" id="toast"></div>
   </div>
 
@@ -287,7 +287,7 @@
           <li><span class="he">♻️</span><span><b>Töm kärl.</b> Kör bara <b>över</b> det gröna kärlet — det töms automatiskt och du får betalt.</span></li>
           <li><span class="he">⚠️</span><span><b>Rapportera avvikelse.</b> Vissa kärl har problem — läs skylten och välj rätt avvikelse (ej utställt, hinder i vägen, tomt kärl eller arbetsmiljö).</span></li>
           <li><span class="he">☎️</span><span><b>Missa inget.</b> Varje avvikelse du missar eller rapporterar fel blir ett samtal till <b>kundservice</b> som dras från kassan.</span></li>
-          <li><span class="he">🌉</span><span><b>Kör smart.</b> Vägar och broar är snabba, gräs och grus är segt, vatten stoppar dig.</span></li>
+          <li><span class="he">🌉</span><span><b>Kör smart.</b> Vägar och broar är snabba, vatten stoppar dig. <b>Krockar och körning utanför vägen kostar reparation</b> som dras på dagsresultatet.</span></li>
         </ul>
       </div>
 
@@ -370,7 +370,7 @@ const UPG = {
 };
 const ROUTE_UNLOCK = { land:260, oar:520 };
 
-function motorMax(){ return 205 + save.upg.motor*42; }        // px/s
+function motorMax(){ return 160 + save.upg.motor*36; }        // px/s
 function accelRate(){ return 7.0 + save.upg.dack*1.7; }        // approach factor
 function turnRate(){ return 7.5 + save.upg.dack*1.3; }
 function emptyTime(){ return 0.85 - save.upg.komp*0.18; }      // seconds
@@ -531,7 +531,9 @@ const game = {
   cam:{x:0,y:0}, time:0, dayMoney:0, activeBin:null, ctxExpanded:false,
   lastTs:0, hintT:5, paused:false,
   parts:[], clouds:[], truckBlink:0,
+  damage:0, crashCd:0, shake:0, offroad:false,
 };
+const reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
 // ---------------- input ----------------
 const input = { ix:0, iy:0, active:false, pid:-1, keys:{} };
@@ -656,6 +658,7 @@ function startDay(){
   game.cam.x=t.x; game.cam.y=t.y;
   game.time=0; game.dayMoney=0; game.activeBin=null; game.ctxExpanded=false; game.hintT=5; game.paused=false;
   game.parts=[]; game.truckBlink=0;
+  game.damage=0; game.crashCd=0; game.shake=0; game.offroad=false;
   game.clouds=[]; const nC=game.route.sea?6:4;
   for(let i=0;i<nC;i++) game.clouds.push({x:rnd(-100,game.route.world.w),y:rnd(0,game.route.world.h),s:rnd(55,120),vx:rnd(5,14),a:rnd(0.28,0.5)});
   game.screen='play';
@@ -670,6 +673,13 @@ function startDay(){
 
 // ---------------- bin interaction ----------------
 function floatText(bin,txt,col){ bin.float.push({txt,col,t:0,y:0}); }
+
+function crash(){
+  const fee=10; game.damage+=fee; game.crashCd=1.0; game.shake=reduceMotion?0:9;
+  toast('💥 Krock! Skada −'+fee+' kr','bad'); beep(120,0.26,'square'); buzz([30,40,30]);
+  const t=game.truck;
+  for(let i=0;i<7;i++){ const a=rnd(0,6.283); game.parts.push({x:t.x,y:t.y,vx:Math.cos(a)*rnd(40,120),vy:Math.sin(a)*rnd(40,120)-40,g:260,t:0,life:rnd(0.4,0.7),type:'smoke'}); }
+}
 
 function resolveEmpty(b, auto){
   if(!b||b.status!=='pending'||b.dev) return;
@@ -716,6 +726,7 @@ function endDay(complete){
   const incEmpty=Math.round(20*payMult())*emptied;
   const incDev=Math.round(30*payMult())*reported;
   const kundPer=60, kundCost=(missedDev+falseReport)*kundPer;
+  const dmg=Math.round(game.damage); // crashes + off-road driving
   // efficiency bonus if finished and quick
   let bonus=0, bonusTxt='';
   if(complete){
@@ -725,9 +736,11 @@ function endDay(complete){
     save.money+=bonus;
   }
 
-  const net = incEmpty+incDev+bonus-kundCost;
+  const net = incEmpty+incDev+bonus-kundCost-dmg;
   const isRecord = net>save.best;
   if(isRecord) save.best=net;
+  // actually settle the deductions against the wallet (never below 0)
+  save.money = Math.max(0, save.money - kundCost - dmg);
   save.day += 1; save.lastRoute=game.routeId; persist();
 
   // build summary UI
@@ -748,6 +761,7 @@ function endDay(complete){
   line('pos','⚠️',`Rapporterade avvikelser ×${reported}`,'+'+incDev+' kr');
   if(complete) line('pos','⚡',`Effektivitetsbonus`,'+'+bonus+' kr', bonusTxt);
   if(kundCost>0) line('neg','☎️',`Kundservice ×${missedDev+falseReport}`,'−'+kundCost+' kr','Missade/felrapporterade avvikelser × 60 kr');
+  if(dmg>0) line('neg','🔧','Skador & körning',`−${dmg} kr`,'Krockar och körning utanför vägen');
   if(missedNormal>0) line('','🫙',`Ej tömda kärl ×${missedNormal}`,'0 kr','Förlorad intäkt – men ingen kundservice');
   line('total','','Dagens resultat',(net>=0?'+':'−')+Math.abs(net)+' kr');
 
@@ -818,12 +832,18 @@ function update(dt){
   t.vx += (tvx-t.vx)*Math.min(1,ar*dt);
   t.vy += (tvy-t.vy)*Math.min(1,ar*dt);
 
-  // move with axis-separated collision (slide along walls/shores)
-  let nx=t.x+t.vx*dt, ny=t.y+t.vy*dt;
-  if(canDrive(nx,t.y)) t.x=nx; else t.vx*=-0.15;
-  if(canDrive(t.x,ny)) t.y=ny; else t.vy*=-0.15;
+  // move with axis-separated collision; a hard knock costs a repair fee
+  const preSp=Math.hypot(t.vx,t.vy);
+  let nx=t.x+t.vx*dt, ny=t.y+t.vy*dt, hit=false;
+  if(canDrive(nx,t.y)) t.x=nx; else { t.vx*=-0.2; hit=true; }
+  if(canDrive(t.x,ny)) t.y=ny; else { t.vy*=-0.2; hit=true; }
+  if(game.crashCd>0) game.crashCd-=dt;
+  if(hit && preSp>110 && game.crashCd<=0) crash();
 
   const sp=Math.hypot(t.vx,t.vy);
+  // charge for driving off the road (lawns, ditches, etc.)
+  if(!fast && sp>28){ game.damage += 4*dt; game.offroad=true; } else game.offroad=false;
+  if(game.shake>0) game.shake=Math.max(0, game.shake-dt*26);
   if(sp>8){ let desired=Math.atan2(t.vy,t.vx); let da=((desired-t.ang+Math.PI)%(Math.PI*2))-Math.PI; t.ang+=da*Math.min(1,turnRate()*dt); }
 
   // camera
@@ -896,7 +916,9 @@ function draw(){
   // ground base
   ctx.fillStyle=R.ground; ctx.fillRect(0,0,W,H);
   const z=viewZoom;
-  ctx.save(); ctx.translate(W/2,H/2); ctx.scale(z,z); ctx.translate(-game.cam.x,-game.cam.y);
+  let shx=0,shy=0;
+  if(game.shake>0 && !reduceMotion){ shx=(Math.random()-0.5)*game.shake; shy=(Math.random()-0.5)*game.shake; }
+  ctx.save(); ctx.translate(W/2+shx,H/2+shy); ctx.scale(z,z); ctx.translate(-game.cam.x,-game.cam.y);
 
   // sea texture for archipelago
   if(R.sea){
@@ -968,6 +990,7 @@ function draw(){
 
   // truck
   drawTruck(t);
+  if(game.offroad){ ctx.font='700 12px Fredoka, sans-serif'; ctx.textAlign='center'; const txt='⚠️ Utanför vägen'; const lw=ctx.measureText(txt).width+16; ctx.fillStyle='rgba(226,72,58,.92)'; roundRect(t.x-lw/2, t.y-48, lw, 20, 10); ctx.fill(); ctx.fillStyle='#fff'; ctx.fillText(txt, t.x, t.y-34); }
 
   // float texts
   ctx.textAlign='center'; ctx.font='700 15px Fredoka, sans-serif';
