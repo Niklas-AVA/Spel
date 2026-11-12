@@ -71,6 +71,9 @@
   .iconbtn:active{transform:scale(.94)}
 
   .ctrls{display:flex;gap:8px;pointer-events:auto;align-items:flex-start;flex:0 0 auto}
+  .zoomctl{position:absolute;right:10px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:9px;pointer-events:none;z-index:4}
+  .zbtn{pointer-events:auto;width:48px;height:48px;border-radius:14px;border:none;background:rgba(255,255,255,.94);box-shadow:var(--shadow);font-family:Fredoka,sans-serif;font-size:25px;font-weight:700;color:var(--ink);display:grid;place-items:center;cursor:pointer;line-height:1}
+  .zbtn:active{transform:scale(.93)}
   .pause-info{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:4px 0 14px}
   .pi{background:var(--panel-2);border-radius:14px;padding:11px 12px}
   .pi .k{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-soft);font-weight:700}
@@ -248,7 +251,11 @@
       <div class="progbar"><i id="progFill"></i></div>
       <span class="lbl" id="clock">0:00</span>
     </div>
-    <div class="hint" id="hint">Dra var som helst för att köra · kör över de gröna kärlen så töms de</div>
+    <div class="zoomctl">
+      <button class="zbtn" id="zoomIn" aria-label="Zooma in">＋</button>
+      <button class="zbtn" id="zoomOut" aria-label="Zooma ut">－</button>
+    </div>
+    <div class="hint" id="hint">Dra för att köra · kör över gröna kärl · nyp eller ＋/− för att zooma</div>
     <div class="toast" id="toast"></div>
   </div>
 
@@ -340,8 +347,6 @@ function resize(){
   H = Math.max(1, Math.round(r.height));
   cv.width = Math.round(W*DPR); cv.height = Math.round(H*DPR);
   ctx.setTransform(DPR,0,0,DPR,0,0);
-  // show a consistent slice of the world so phones see more of the route
-  viewZoom = Math.max(0.8, Math.min(1.12, W/480));
 }
 window.addEventListener('resize', resize);
 window.addEventListener('orientationchange', ()=>setTimeout(resize,120));
@@ -349,7 +354,7 @@ if(window.visualViewport) window.visualViewport.addEventListener('resize', resiz
 
 // ---------------- persistence ----------------
 const SAVE_KEY = 'sopbil.save.v1';
-const DEFAULT_SAVE = { money:0, day:1, upg:{motor:0,dack:0,komp:0}, unlocked:{stad:true,land:false,oar:false}, lastRoute:'stad', best:0, sound:true };
+const DEFAULT_SAVE = { money:0, day:1, upg:{motor:0,dack:0,komp:0}, unlocked:{stad:true,land:false,oar:false}, lastRoute:'stad', best:0, sound:true, zoom:1.25 };
 function loadSave(){
   try{ const s = JSON.parse(localStorage.getItem(SAVE_KEY)); if(s&&typeof s.money==='number'){ return Object.assign({},DEFAULT_SAVE, s, {upg:Object.assign({},DEFAULT_SAVE.upg,s.upg), unlocked:Object.assign({},DEFAULT_SAVE.unlocked,s.unlocked)});} }catch(e){}
   return JSON.parse(JSON.stringify(DEFAULT_SAVE));
@@ -533,18 +538,40 @@ const input = { ix:0, iy:0, active:false, pid:-1, keys:{} };
 window.addEventListener('keydown',e=>{
   const k=e.key.toLowerCase(); input.keys[k]=true;
   if((k==='escape'||k==='p') && game.screen==='play'){ game.paused?closePause():openPause(); }
+  if(game.screen==='play'){ if(k==='+'||k==='='){ setZoom(save.zoom*1.12); } else if(k==='-'||k==='_'){ setZoom(save.zoom/1.12); } }
 });
 window.addEventListener('keyup',e=>{ input.keys[e.key.toLowerCase()]=false; });
 
 let joy=null; // {ox,oy,x,y}
+const pointers = new Map();
+let pinch=null; // {d0, z0}
+let _zt=0;
+function setZoom(z){ viewZoom = save.zoom = Math.max(0.85, Math.min(2.4, z)); clearTimeout(_zt); _zt=setTimeout(persist,300); }
+
 cv.addEventListener('pointerdown', e=>{
   if(game.screen!=='play') return;
-  input.active=true; input.pid=e.pointerId;
-  input.downX=e.clientX; input.downY=e.clientY; input.downT=performance.now(); input.moved=false;
-  joy={ox:e.clientX, oy:e.clientY, x:e.clientX, y:e.clientY};
+  pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
   cv.setPointerCapture(e.pointerId);
+  if(pointers.size>=2){
+    // two fingers -> pinch to zoom, stop driving
+    input.active=false; input.ix=0; input.iy=0; joy=null; input.pid=-1;
+    const p=[...pointers.values()];
+    pinch={ d0:Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y)||1, z0:save.zoom };
+  } else {
+    input.active=true; input.pid=e.pointerId;
+    input.downX=e.clientX; input.downY=e.clientY; input.downT=performance.now(); input.moved=false;
+    joy={ox:e.clientX, oy:e.clientY, x:e.clientX, y:e.clientY};
+  }
 });
 cv.addEventListener('pointermove', e=>{
+  if(!pointers.has(e.pointerId)) return;
+  pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(pinch && pointers.size>=2){
+    const p=[...pointers.values()];
+    const d=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);
+    setZoom(pinch.z0 * d/pinch.d0);
+    return;
+  }
   if(!input.active||e.pointerId!==input.pid||!joy) return;
   joy.x=e.clientX; joy.y=e.clientY;
   let dx=joy.x-joy.ox, dy=joy.y-joy.oy;
@@ -554,10 +581,12 @@ cv.addEventListener('pointermove', e=>{
   if(Math.hypot(e.clientX-input.downX, e.clientY-input.downY) > 12) input.moved=true;
 });
 function endPointer(e){
+  pointers.delete(e.pointerId);
+  if(pointers.size<2) pinch=null;
   if(e.pointerId!==input.pid) return;
   const wasTap = !input.moved && (performance.now()-input.downT < 400);
   input.active=false; input.ix=0; input.iy=0; joy=null; input.pid=-1;
-  if(wasTap && e.type==='pointerup' && !game.paused) handleTap(e.clientX, e.clientY);
+  if(wasTap && e.type==='pointerup' && !game.paused && pointers.size===0) handleTap(e.clientX, e.clientY);
 }
 cv.addEventListener('pointerup', endPointer);
 cv.addEventListener('pointercancel', endPointer);
@@ -1151,6 +1180,8 @@ function syncSoundBtn(){ document.getElementById('soundBtn').textContent = audio
 document.getElementById('soundBtn').onclick=()=>{
   audioOn=!audioOn; save.sound=audioOn; persist(); syncSoundBtn(); if(audioOn) beep(700,0.08);
 };
+document.getElementById('zoomIn').onclick=()=>setZoom(save.zoom*1.2);
+document.getElementById('zoomOut').onclick=()=>setZoom(save.zoom/1.2);
 document.getElementById('toGarage').onclick=()=>{
   game.screen='garage'; document.getElementById('summary').classList.remove('show');
   document.getElementById('garage').classList.add('show'); buildGarage();
@@ -1159,6 +1190,7 @@ document.getElementById('toGarage').onclick=()=>{
 // ---------------- boot ----------------
 function boot(){
   resize();
+  viewZoom = save.zoom || 1.25;
   syncSoundBtn();
   game.screen='garage';
   document.getElementById('garage').classList.add('show');
