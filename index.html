@@ -109,8 +109,9 @@
   .btn:active{transform:scale(.97)}
   .btn.green{background:var(--green);color:#fff}
   .btn.ghost{background:var(--panel-2);color:var(--ink)}
-  .btn.dev{background:#fff;border:2px solid var(--line);color:var(--ink);font-size:13px;padding:12px 6px;flex-direction:column;gap:4px}
-  .btn.dev .em{font-size:19px}
+  .btn.dev{background:var(--panel-2);border:2px solid var(--line);color:var(--ink);font-size:13.5px;padding:16px 6px;flex-direction:column;gap:5px}
+  .btn.dev:active{background:var(--green-l);border-color:var(--green)}
+  .btn.dev .em{font-size:23px}
   .btn.back{background:transparent;color:var(--ink-soft);grid-column:1/-1;padding:8px}
   .ctx-dev-title{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);font-weight:700;margin:2px 2px 8px}
 
@@ -204,6 +205,8 @@
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
   .toast.good{background:var(--green-d)}
   .toast.bad{background:var(--red)}
+  .pulse{animation:moneypulse .4s ease}
+  @keyframes moneypulse{0%{transform:scale(1)}40%{transform:scale(1.2)}100%{transform:scale(1)}}
 </style>
 
 <div id="app">
@@ -226,7 +229,7 @@
       <div class="progbar"><i id="progFill"></i></div>
       <span class="lbl" id="clock">0:00</span>
     </div>
-    <div class="hint" id="hint">Dra var som helst för att köra · tryck på kärlet när du är nära</div>
+    <div class="hint" id="hint">Dra var som helst för att köra · kör över de gröna kärlen så töms de</div>
     <div class="toast" id="toast"></div>
   </div>
 
@@ -255,7 +258,7 @@
       <div class="card">
         <h2>Så funkar passet</h2>
         <ul class="helplist">
-          <li><span class="he">♻️</span><span><b>Töm kärl.</b> Kör fram till ett grönt kärl och <b>tryck på det</b> — ett tryck tömmer och ger betalt.</span></li>
+          <li><span class="he">♻️</span><span><b>Töm kärl.</b> Kör bara <b>över</b> det gröna kärlet — det töms automatiskt och du får betalt.</span></li>
           <li><span class="he">⚠️</span><span><b>Rapportera avvikelse.</b> Vissa kärl har problem — läs skylten och välj rätt avvikelse (ej utställt, hinder i vägen, tomt kärl eller arbetsmiljö).</span></li>
           <li><span class="he">☎️</span><span><b>Missa inget.</b> Varje avvikelse du missar eller rapporterar fel blir ett samtal till <b>kundservice</b> som dras från kassan.</span></li>
           <li><span class="he">🌉</span><span><b>Kör smart.</b> Vägar och broar är snabba, gräs och grus är segt, vatten stoppar dig.</span></li>
@@ -370,30 +373,34 @@ function makeRoute(id){
   function binsAlongV(r,side,step=215){ for(let y=r.y0+150;y<=r.y1-120;y+=step){ spots.push({x:r.x + side*72, y}); } }
 
   if(id==='stad'){
-    R.world={w:2520,h:1680}; R.ground='#9dc877';
+    R.world={w:2520,h:1680}; R.ground='#8ed368';
     const hs=[260,700,1140,1540].map(y=>hRoad(120,2400,y));
     const vs=[300,860,1420,1980,2380].map(x=>vRoad(120,1560,x));
     // buildings fill blocks
     const cols=[120,300,860,1420,1980,2380,2400];
     const rows=[120,260,700,1140,1540,1560];
-    const bcolors=['#d9c7a8','#c9b394','#e0d0bb','#cdbda0','#d6c3a2'];
+    const bcolors=['#f0e2c6','#e9d7b3','#f3e8d2','#ecdcc0','#e7d4b0','#efe0c4'];
+    const roofs=['#e8604c','#f2a93b','#4ea0e0','#7b61ff','#2fbf55','#ef5da8','#ff8f4d','#e24b7a'];
     for(let ci=0;ci<cols.length-1;ci++){ for(let ri=0;ri<rows.length-1;ri++){
-      const x0=cols[ci]+58, x1=cols[ci+1]-58, y0=rows[ri]+58, y1=rows[ri+1]-58;
-      if(x1-x0<80||y1-y0<80) continue;
-      // split big block into 1-2 buildings
-      const bw=x1-x0, bh=y1-y0;
-      const parts = bw>260 ? 2:1;
-      for(let p=0;p<parts;p++){
-        const px=x0 + p*(bw/parts) + 6, pw=bw/parts-12;
-        R.obstacles.push({x:px,y:y0,w:pw,h:bh, kind:'bld', c:pick(bcolors)});
-      }
+      // place a cluster of small houses inside each block with grass gaps
+      const bx0=cols[ci]+40, bx1=cols[ci+1]-40, by0=rows[ri]+50, by1=rows[ri+1]-28;
+      const bw=bx1-bx0, bh=by1-by0;
+      if(bw<70||bh<70) continue;
+      const nC=Math.max(1,Math.round(bw/155)), nR=Math.max(1,Math.round(bh/155));
+      const cw=bw/nC, ch=bh/nR;
+      for(let a=0;a<nC;a++){ for(let c2=0;c2<nR;c2++){
+        const mw=rnd(16,30), mh=rnd(18,30);
+        const hw=cw-mw, hh=ch-mh;
+        if(hw<46||hh<46) continue;
+        R.obstacles.push({x:bx0+a*cw+mw/2, y:by0+c2*ch+mh/2, w:hw, h:hh, kind:'bld', c:pick(bcolors), roof:pick(roofs)});
+      }}
     }}
     hs.forEach((r,i)=>binsAlongH(r, i%2?-1:1));
     vs.forEach((r,i)=>{ if(i%2) binsAlongV(r, 1); });
     R.start={x:300,y:260};
   }
   else if(id==='land'){
-    R.world={w:2900,h:2050}; R.ground='#86bf63';
+    R.world={w:2900,h:2050}; R.ground='#83cf5d';
     const main=hRoad(140,2760,1030);
     const b1=vRoad(220,1030,640);
     const b2=vRoad(1030,1840,2180);
@@ -416,7 +423,7 @@ function makeRoute(id){
     R.start={x:300,y:1030};
   }
   else { // oar — archipelago / bridges, ground is sea
-    R.world={w:2700,h:2060}; R.ground='#2a86b0'; R.sea=true;
+    R.world={w:2700,h:2060}; R.ground='#37a6d4'; R.sea=true;
     const isl=[
       {x:90,y:170,w:860,h:760},    // A top-left
       {x:1180,y:120,w:780,h:640},  // B top-right
@@ -464,9 +471,27 @@ function makeRoute(id){
   chosen.forEach((s,i)=>{
     const dev = i<devCount ? devList[i] : null;
     R.bins.push({ id:i, x:s.x, y:s.y, dev, status:'pending',
-      side:(s.y%160<80)?1:-1, anim:0, float:[] });
+      side:(s.y%160<80)?1:-1, anim:0, blink:0, float:[] });
   });
   shuffle(R.bins);
+
+  // playful ground detail: flowers & grass tufts
+  (function(){
+    const fc=['#ff7aa2','#ffd23f','#ff9e3d','#c77dff','#ffffff','#7ad0ff'];
+    const n = R.sea?44:82;
+    for(let i=0;i<n;i++){
+      let x=0,y=0,ok=false,tries=0;
+      while(!ok && tries++<8){
+        if(R.sea){ const isl=pick(R.islands); x=rnd(isl.x+16,isl.x+isl.w-16); y=rnd(isl.y+16,isl.y+isl.h-16); }
+        else { x=rnd(30,R.world.w-30); y=rnd(30,R.world.h-30); }
+        ok=true;
+        for(const r of R.roads) if(inRect(x,y,r,16)){ok=false;break;}
+        if(ok) for(const o of R.obstacles) if(inRect(x,y,o,8)){ok=false;break;}
+        if(ok) for(const w of R.water) if(inRect(x,y,w,10)){ok=false;break;}
+      }
+      if(ok) R.decos.push(Math.random()<0.5?{t:'flower',x,y,c:pick(fc)}:{t:'tuft',x,y});
+    }
+  })();
   return R;
 }
 
@@ -477,6 +502,7 @@ const game = {
   truck:{x:0,y:0,vx:0,vy:0,ang:-Math.PI/2},
   cam:{x:0,y:0}, time:0, dayMoney:0, activeBin:null, ctxExpanded:false,
   lastTs:0, hintT:5, paused:false,
+  parts:[], clouds:[], truckBlink:0,
 };
 
 // ---------------- input ----------------
@@ -527,9 +553,8 @@ function handleTap(cx,cy){
   }
   if(!best) return;
   if(Math.hypot(best.x-t.x,best.y-t.y) > 132){ toast('Kör närmare kärlet först','bad'); beep(300,0.1); return; }
-  game.activeBin=best;
-  if(best.dev){ game.ctxExpanded=true; renderCtx(); }
-  else emptyBin();
+  if(best.dev){ game.activeBin=best; renderCtx(); }
+  else resolveEmpty(best,false);
 }
 
 // ---------------- audio (tiny, optional) ----------------
@@ -571,6 +596,9 @@ function startDay(){
   t.x=game.route.start.x; t.y=game.route.start.y; t.vx=0; t.vy=0; t.ang=-Math.PI/2;
   game.cam.x=t.x; game.cam.y=t.y;
   game.time=0; game.dayMoney=0; game.activeBin=null; game.ctxExpanded=false; game.hintT=5; game.paused=false;
+  game.parts=[]; game.truckBlink=0;
+  game.clouds=[]; const nC=game.route.sea?6:4;
+  for(let i=0;i<nC;i++) game.clouds.push({x:rnd(-100,game.route.world.w),y:rnd(0,game.route.world.h),s:rnd(55,120),vx:rnd(5,14),a:rnd(0.28,0.5)});
   game.screen='play';
   document.getElementById('garage').classList.remove('show');
   document.getElementById('summary').classList.remove('show');
@@ -583,34 +611,25 @@ function startDay(){
 // ---------------- bin interaction ----------------
 function floatText(bin,txt,col){ bin.float.push({txt,col,t:0,y:0}); }
 
-function emptyBin(){
-  const b=game.activeBin; if(!b||b.status!=='pending') return;
-  if(b.dev){ // wrong: emptying a problem bin
-    b.status='mishandled';
-    floatText(b,'Fel hantering!','#e2483a'); beep(180,0.25,'square');
-    toast('Det där var en avvikelse — fel!','bad');
-  } else {
-    b.status='emptied'; b.anim=0.001;
-    const pay=Math.round(20*payMult());
-    game.dayMoney+=pay; save.money+=pay;
-    floatText(b,'+'+pay+' kr','#1f7d3a'); beep(660,0.09); setTimeout(()=>beep(880,0.08),70);
-    toast('Kärl tömt  +'+pay+' kr','good');
-  }
-  game.activeBin=null; game.ctxExpanded=false; persist(); updateHud(); checkDone();
+function resolveEmpty(b, auto){
+  if(!b||b.status!=='pending'||b.dev) return;
+  b.status='emptied'; b.anim=0.001;
+  const pay=Math.round(20*payMult());
+  game.dayMoney+=pay; save.money+=pay;
+  floatText(b,'+'+pay+' kr','#1f7d3a'); burst(b.x,b.y,'coin');
+  beep(660,0.08); setTimeout(()=>beep(880,0.07),55);
+  bumpMoney(); persist(); updateHud(); checkDone();
 }
+function emptyBin(){ resolveEmpty(game.activeBin,false); game.activeBin=null; }
 function reportDev(type){
-  const b=game.activeBin; if(!b||b.status!=='pending') return;
-  if(!b.dev){ // false report on a normal bin
-    b.status='mishandled'; floatText(b,'Felaktig anmälan','#e2483a'); beep(180,0.25,'square');
-    toast('Kärlet var helt normalt — fel anmälan','bad');
-    game.activeBin=null; game.ctxExpanded=false; persist(); updateHud(); checkDone(); return;
-  }
+  const b=game.activeBin; if(!b||b.status!=='pending'||!b.dev) return;
   if(type!==b.dev){ beep(200,0.18,'square'); toast('Fel avvikelse — titta på skylten igen','bad'); return; }
   b.status='reported';
   const pay=Math.round(30*payMult());
   game.dayMoney+=pay; save.money+=pay;
-  floatText(b,'Avvikelse ✓ +'+pay,'#1f7d3a'); beep(620,0.09); setTimeout(()=>beep(820,0.1),80);
-  toast('Avvikelse rapporterad  +'+pay+' kr','good');
+  floatText(b,'Avvikelse ✓ +'+pay,'#1f7d3a'); burst(b.x,b.y,'conf');
+  beep(620,0.09); setTimeout(()=>beep(820,0.1),80); setTimeout(()=>beep(1040,0.12),170);
+  bumpMoney(); toast('Avvikelse rapporterad  +'+pay+' kr','good');
   game.activeBin=null; game.ctxExpanded=false; persist(); updateHud(); checkDone();
 }
 function checkDone(){
@@ -698,47 +717,26 @@ function toast(msg,kind){
 function renderCtx(){
   const el=document.getElementById('ctx');
   const b=game.activeBin;
-  if(!b){ el.classList.remove('show'); el._bin=null; return; }
-  const sig = b._sig = b.id+'|'+(game.ctxExpanded?'e':'c');
-  if(el._sig===sig){ return; }
-  el._sig=sig;
-  el.classList.add('show');
-
-  if(game.ctxExpanded){
-    el.innerHTML = `<div class="ctx-dev-title">Vilken avvikelse ser du?</div>
-      <div class="ctx-actions dev"></div>`;
-    const grid=el.querySelector('.ctx-actions');
-    DEV_TYPES.forEach(t=>{
-      const d=DEV_INFO[t];
-      const btn=document.createElement('button');
-      btn.className='btn dev';
-      btn.innerHTML=`<span class="em">${d.emoji}</span>${d.label}`;
-      btn.onclick=()=>reportDev(t);
-      grid.appendChild(btn);
-    });
-    const back=document.createElement('button');
-    back.className='btn back'; back.textContent='← Tillbaka';
-    back.onclick=()=>{ game.ctxExpanded=false; el._sig=null; renderCtx(); };
-    grid.appendChild(back);
-  } else {
-    const isDev=!!b.dev;
-    const info = isDev ? DEV_INFO[b.dev] : null;
-    const ic = isDev ? info.emoji : '♻️';
-    const bg = isDev ? info.color : '#2fa84f';
-    const tt = isDev ? 'Avvikelse vid kärlet' : 'Grönt kärl';
-    const sb = isDev ? info.scene : 'Töm kärlet och kvittera.';
-    el.innerHTML = `
-      <div class="ctx-head">
-        <div class="ctx-ic" style="background:${bg}22;color:${bg}">${ic}</div>
-        <div><div class="ctx-tt">${tt}</div><div class="ctx-sb">${sb}</div></div>
-      </div>
-      <div class="ctx-actions">
-        <button class="btn green" id="btnEmpty">♻️ Töm kärl</button>
-        <button class="btn ghost" id="btnDev">⚠️ Avvikelse</button>
-      </div>`;
-    el.querySelector('#btnEmpty').onclick=emptyBin;
-    el.querySelector('#btnDev').onclick=()=>{ game.ctxExpanded=true; el._sig=null; renderCtx(); };
-  }
+  if(!b){ el.classList.remove('show'); el._sig=null; return; }
+  const sig = b.id;
+  if(el._sig===sig && el.classList.contains('show')){ return; }
+  el._sig=sig; el.classList.add('show');
+  const info=DEV_INFO[b.dev];
+  el.innerHTML = `
+    <div class="ctx-head">
+      <div class="ctx-ic" style="background:${info.color}22;color:${info.color}">${info.emoji}</div>
+      <div><div class="ctx-tt">Avvikelse – välj rätt sort</div><div class="ctx-sb">${info.scene}</div></div>
+    </div>
+    <div class="ctx-actions dev"></div>`;
+  const grid=el.querySelector('.ctx-actions');
+  DEV_TYPES.forEach(t=>{
+    const d=DEV_INFO[t];
+    const btn=document.createElement('button');
+    btn.className='btn dev';
+    btn.innerHTML=`<span class="em">${d.emoji}</span>${d.label}`;
+    btn.onclick=()=>reportDev(t);
+    grid.appendChild(btn);
+  });
 }
 
 // ---------------- update loop ----------------
@@ -772,18 +770,33 @@ function update(dt){
   game.cam.x += (t.x-game.cam.x)*Math.min(1,8*dt);
   game.cam.y += (t.y-game.cam.y)*Math.min(1,8*dt);
 
-  // nearest pending bin for interaction
+  // exhaust puffs when driving
+  if(inMag>0.45 && Math.random()<0.4){
+    const bx=t.x-Math.cos(t.ang)*22, by=t.y-Math.sin(t.ang)*22;
+    game.parts.push({x:bx,y:by,vx:rnd(-10,10),vy:rnd(-10,10),g:-6,t:0,life:0.55,type:'smoke'});
+  }
+  // auto-empty normal bins by driving over them (arcade pickup)
+  for(const b of R.bins){ if(b.status!=='pending'||b.dev) continue;
+    if(Math.hypot(b.x-t.x,b.y-t.y) < 42) resolveEmpty(b,true);
+  }
+  // nearest pending deviation bin -> show report panel
   let near=null, nd=1e9;
-  for(const b of R.bins){ if(b.status!=='pending') continue; const d=Math.hypot(b.x-t.x,b.y-t.y); if(d<nd){nd=d;near=b;} }
-  const canInteract = near && nd<98 && sp<170;
-  if(canInteract){ if(game.activeBin!==near){ game.ctxExpanded=false; } game.activeBin=near; }
-  else { if(game.activeBin){ game.ctxExpanded=false; } game.activeBin=null; }
+  for(const b of R.bins){ if(b.status!=='pending'||!b.dev) continue; const d=Math.hypot(b.x-t.x,b.y-t.y); if(d<nd){nd=d;near=b;} }
+  game.activeBin = (near && nd<112) ? near : null;
   renderCtx();
 
-  // bin anims & floats
+  // particles
+  for(let i=game.parts.length-1;i>=0;i--){ const p=game.parts[i]; p.t+=dt; p.vy+=(p.g||0)*dt; p.x+=p.vx*dt; p.y+=p.vy*dt; p.vx*=0.98; if(p.t>p.life) game.parts.splice(i,1); }
+  // clouds drift
+  for(const c of game.clouds){ c.x+=c.vx*dt; if(c.x>R.world.w+260) c.x=-260; }
+  // truck blink
+  if(game.truckBlink>0) game.truckBlink-=dt; else if(Math.random()<0.006) game.truckBlink=0.14;
+
+  // bin anims, blink & floats
   for(const b of R.bins){
-    if(b.anim>0){ b.anim+=dt; if(b.anim>0.6) b.anim=0; }
-    for(let i=b.float.length-1;i>=0;i--){ const f=b.float[i]; f.t+=dt; f.y-=28*dt; if(f.t>1.3) b.float.splice(i,1); }
+    if(b.anim>0){ b.anim+=dt; if(b.anim>0.7) b.anim=0; }
+    if(b.blink>0) b.blink-=dt; else if(Math.random()<0.004) b.blink=0.15;
+    for(let i=b.float.length-1;i>=0;i--){ const f=b.float[i]; f.t+=dt; f.y-=30*dt; if(f.t>1.3) b.float.splice(i,1); }
   }
 
   game.time+=dt;
@@ -794,6 +807,28 @@ function update(dt){
 
 // ---------------- render ----------------
 function roundRect(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+
+function burst(x,y,kind){
+  if(kind==='coin'){ for(let i=0;i<9;i++){ const a=rnd(0,6.283),s=rnd(40,130); game.parts.push({x,y:y-4,vx:Math.cos(a)*s,vy:-rnd(70,160),g:300,t:0,life:rnd(0.5,0.9),type:'coin'}); } }
+  else { for(let i=0;i<18;i++){ const a=rnd(0,6.283); game.parts.push({x,y:y-6,vx:Math.cos(a)*rnd(60,190),vy:-rnd(90,200),g:320,t:0,life:rnd(0.7,1.2),type:'conf',col:pick(['#ff7aa2','#ffd23f','#4ea0e0','#2fbf55','#c77dff','#ff9e3d']),rot:rnd(0,6.283),vr:rnd(-12,12)}); } }
+}
+function bumpMoney(){ const el=document.getElementById('hudMoney'); if(!el) return; el.classList.remove('pulse'); void el.offsetWidth; el.classList.add('pulse'); }
+function drawParts(){
+  for(const p of game.parts){ const k=Math.max(0,1-p.t/p.life);
+    if(p.type==='coin'){ ctx.globalAlpha=k; ctx.fillStyle='#ffcf33'; ctx.strokeStyle='#e0a400'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(p.x,p.y,5,0,6.3); ctx.fill(); ctx.stroke(); ctx.fillStyle='#e0a400'; ctx.font='700 7px Fredoka, sans-serif'; ctx.textAlign='center'; ctx.fillText('kr',p.x,p.y+2.5); }
+    else if(p.type==='conf'){ ctx.save(); ctx.globalAlpha=k; ctx.translate(p.x,p.y); ctx.rotate(p.rot+p.vr*p.t); ctx.fillStyle=p.col; ctx.fillRect(-3,-4,6,8); ctx.restore(); }
+    else if(p.type==='smoke'){ ctx.globalAlpha=k*0.4; ctx.fillStyle='#c3ccc6'; ctx.beginPath(); ctx.arc(p.x,p.y,4+p.t*11,0,6.3); ctx.fill(); }
+  }
+  ctx.globalAlpha=1;
+}
+function drawClouds(){
+  for(const c of game.clouds){ ctx.globalAlpha=c.a; ctx.fillStyle='#ffffff';
+    ctx.beginPath(); ctx.ellipse(c.x,c.y,c.s,c.s*0.6,0,0,6.3); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(c.x+c.s*0.7,c.y+8,c.s*0.7,c.s*0.5,0,0,6.3); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(c.x-c.s*0.7,c.y+8,c.s*0.62,c.s*0.44,0,0,6.3); ctx.fill();
+  }
+  ctx.globalAlpha=1;
+}
 
 function draw(){
   const R=game.route, t=game.truck;
@@ -836,16 +871,26 @@ function draw(){
     if(horiz){ for(let px=b.x+6;px<b.x+b.w;px+=16) ctx.fillRect(px,b.y+4,3,b.h-8); ctx.fillStyle='#6f4a2a'; ctx.fillRect(b.x,b.y-3,b.w,5); ctx.fillRect(b.x,b.y+b.h-2,b.w,5); }
     else { for(let py=b.y+6;py<b.y+b.h;py+=16) ctx.fillRect(b.x+4,py,b.w-8,3); ctx.fillStyle='#6f4a2a'; ctx.fillRect(b.x-3,b.y,5,b.h); ctx.fillRect(b.x+b.w-2,b.y,5,b.h); }
   }
-  // trees (after roads so they overlap grass only)
-  for(const d of R.decos){ if(d.t==='tree'){ ctx.fillStyle='rgba(0,0,0,.14)'; ctx.beginPath(); ctx.ellipse(d.x+4,d.y+d.r*0.7,d.r*0.9,d.r*0.5,0,0,6.3); ctx.fill(); ctx.fillStyle='#4e8f3f'; ctx.beginPath(); ctx.arc(d.x,d.y,d.r,0,6.3); ctx.fill(); ctx.fillStyle='#5ba24a'; ctx.beginPath(); ctx.arc(d.x-d.r*0.3,d.y-d.r*0.3,d.r*0.6,0,6.3); ctx.fill(); } }
+  // ground detail: tufts, flowers, trees (after roads so they sit on grass)
+  for(const d of R.decos){
+    if(d.t==='tuft'){ ctx.strokeStyle='#5aa83f'; ctx.lineWidth=2; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(d.x,d.y); ctx.lineTo(d.x-3,d.y-6); ctx.moveTo(d.x,d.y); ctx.lineTo(d.x,d.y-8); ctx.moveTo(d.x,d.y); ctx.lineTo(d.x+3,d.y-6); ctx.stroke(); }
+    else if(d.t==='flower'){ ctx.strokeStyle='#4e9a3a'; ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(d.x,d.y); ctx.lineTo(d.x,d.y-6); ctx.stroke(); ctx.fillStyle=d.c; for(let a=0;a<6.28;a+=1.25){ ctx.beginPath(); ctx.arc(d.x+Math.cos(a)*2.6,d.y-6+Math.sin(a)*2.6,1.8,0,6.3); ctx.fill(); } ctx.fillStyle='#ffd23f'; ctx.beginPath(); ctx.arc(d.x,d.y-6,1.5,0,6.3); ctx.fill(); }
+    else if(d.t==='tree'){ ctx.fillStyle='rgba(0,0,0,.14)'; ctx.beginPath(); ctx.ellipse(d.x+4,d.y+d.r*0.7,d.r*0.9,d.r*0.5,0,0,6.3); ctx.fill(); ctx.fillStyle='#8a5a33'; ctx.fillRect(d.x-2,d.y,4,d.r*0.7); ctx.fillStyle='#4e9a3e'; ctx.beginPath(); ctx.arc(d.x,d.y,d.r,0,6.3); ctx.fill(); ctx.fillStyle='#63b352'; ctx.beginPath(); ctx.arc(d.x-d.r*0.3,d.y-d.r*0.3,d.r*0.62,0,6.3); ctx.fill(); ctx.fillStyle='#78c468'; ctx.beginPath(); ctx.arc(d.x+d.r*0.25,d.y-d.r*0.1,d.r*0.4,0,6.3); ctx.fill(); } }
   // buildings
   for(const o of R.obstacles){
-    ctx.fillStyle='rgba(0,0,0,.12)'; roundRect(o.x+5,o.y+7,o.w,o.h,8); ctx.fill();
-    ctx.fillStyle=o.c||'#d6c3a2'; roundRect(o.x,o.y,o.w,o.h,8); ctx.fill();
-    ctx.fillStyle='rgba(0,0,0,.07)'; roundRect(o.x,o.y,o.w,14,8); ctx.fill();
-    // windows
-    ctx.fillStyle='rgba(255,255,255,.5)';
-    for(let wx=o.x+14;wx<o.x+o.w-16;wx+=34){ for(let wy=o.y+24;wy<o.y+o.h-18;wy+=34){ ctx.fillRect(wx,wy,16,20); } }
+    // shadow + wall
+    ctx.fillStyle='rgba(0,0,0,.15)'; roundRect(o.x+5,o.y+8,o.w,o.h,9); ctx.fill();
+    ctx.fillStyle=o.c||'#eedfc2'; roundRect(o.x,o.y,o.w,o.h,9); ctx.fill();
+    // door
+    const dw=Math.min(20,o.w*0.28);
+    ctx.fillStyle='rgba(0,0,0,.16)'; roundRect(o.x+o.w/2-dw/2,o.y+o.h-19,dw,19,4); ctx.fill();
+    // a row of warm windows near the top of the wall
+    ctx.fillStyle='#ffe29a';
+    for(let wx=o.x+13; wx<o.x+o.w-18; wx+=32){ roundRect(wx,o.y+12,15,16,3); ctx.fill(); }
+    // pitched roof
+    ctx.fillStyle=o.roof||'#e8604c'; ctx.beginPath(); ctx.moveTo(o.x-7,o.y+9); ctx.lineTo(o.x+o.w/2,o.y-18); ctx.lineTo(o.x+o.w+7,o.y+9); ctx.closePath(); ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,.16)'; ctx.beginPath(); ctx.moveTo(o.x-7,o.y+9); ctx.lineTo(o.x+o.w/2,o.y-18); ctx.lineTo(o.x+o.w/2,o.y+9); ctx.closePath(); ctx.fill();
+    ctx.fillStyle='rgba(0,0,0,.08)'; ctx.fillRect(o.x-5,o.y+7,o.w+10,3);
   }
 
   // bins
@@ -854,7 +899,7 @@ function draw(){
   if(game.activeBin){ const b=game.activeBin;
     const pulse=28+Math.sin(game.time*5)*3;
     ctx.strokeStyle='rgba(255,255,255,.95)'; ctx.lineWidth=3; ctx.setLineDash([8,8]); ctx.lineDashOffset=-(game.time*30)%16; ctx.beginPath(); ctx.arc(b.x,b.y,pulse,0,6.3); ctx.stroke(); ctx.setLineDash([]);
-    const txt=b.dev?'Tryck: rapportera':'Tryck för att tömma';
+    const txt='Stanna & välj avvikelse ↓';
     ctx.font='700 13px Fredoka, sans-serif'; ctx.textAlign='center';
     const lw=ctx.measureText(txt).width+20;
     ctx.fillStyle='rgba(20,36,31,.92)'; roundRect(b.x-lw/2, b.y-58, lw, 23, 11); ctx.fill();
@@ -869,6 +914,9 @@ function draw(){
   for(const b of R.bins){ for(const f of b.float){ ctx.globalAlpha=Math.max(0,1-f.t/1.3); ctx.fillStyle='#fff'; ctx.lineWidth=3; ctx.strokeStyle='rgba(0,0,0,.35)'; ctx.strokeText(f.txt,b.x,b.y-26+f.y); ctx.fillStyle=f.col; ctx.fillText(f.txt,b.x,b.y-26+f.y); } }
   ctx.globalAlpha=1;
 
+  drawParts();
+  drawClouds();
+
   ctx.restore();
 
   // off-screen bin arrows (guide to remaining bins)
@@ -878,43 +926,47 @@ function draw(){
 }
 
 function drawBin(b){
-  const x=b.x, y=b.y;
+  const x=b.x;
   // shadow
-  ctx.fillStyle='rgba(0,0,0,.16)'; ctx.beginPath(); ctx.ellipse(x,y+14,15,6,0,0,6.3); ctx.fill();
+  ctx.fillStyle='rgba(0,0,0,.16)'; ctx.beginPath(); ctx.ellipse(x,b.y+15,15,6,0,0,6.3); ctx.fill();
   if(b.status==='emptied'||b.status==='reported'){
-    // handled: faded checkmark marker
-    ctx.fillStyle='rgba(255,255,255,.75)'; ctx.beginPath(); ctx.arc(x,y,12,0,6.3); ctx.fill();
-    ctx.strokeStyle='#1f7d3a'; ctx.lineWidth=3; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(x-5,y); ctx.lineTo(x-1,y+4); ctx.lineTo(x+6,y-5); ctx.stroke();
+    ctx.fillStyle='rgba(255,255,255,.82)'; ctx.beginPath(); ctx.arc(x,b.y,12,0,6.3); ctx.fill();
+    ctx.strokeStyle='#1f9d47'; ctx.lineWidth=3.2; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(x-5,b.y+1); ctx.lineTo(x-1,b.y+5); ctx.lineTo(x+6,b.y-5); ctx.stroke();
     return;
   }
   if(b.status==='mishandled'){
-    ctx.fillStyle='rgba(226,72,58,.85)'; roundRect(x-11,y-13,22,26,5); ctx.fill();
-    ctx.fillStyle='#fff'; ctx.font='700 15px Fredoka'; ctx.textAlign='center'; ctx.fillText('✕',x,y+5); return;
+    ctx.fillStyle='rgba(226,72,58,.9)'; roundRect(x-11,b.y-13,22,26,6); ctx.fill();
+    ctx.fillStyle='#fff'; ctx.font='700 15px Fredoka, sans-serif'; ctx.textAlign='center'; ctx.fillText('✕',x,b.y+5); return;
   }
   const isDev=!!b.dev;
-  // body color
-  const bodyC = isDev ? '#4f5a55' : '#2fa84f';
-  // bin body
-  const squeeze = b.anim>0 ? Math.sin(b.anim*10)*2 : 0;
-  ctx.fillStyle=bodyC; roundRect(x-11, y-12+squeeze, 22, 25-squeeze, 4); ctx.fill();
+  const bounce = b.anim>0 ? Math.sin(b.anim*12)*3 : Math.sin(game.time*2.6+b.id)* (isDev?1.4:0.7);
+  const y = b.y + bounce;
+  const col = isDev ? '#67747c' : '#2fbf55';
+  const lid = isDev ? '#515d64' : '#1f9d47';
+  // body
+  ctx.fillStyle=col; roundRect(x-11, y-10, 22, 24, 6); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.14)'; roundRect(x-11,y-10,8,24,6); ctx.fill();
+  // wheels
+  ctx.fillStyle='#222b27'; ctx.beginPath(); ctx.arc(x-7,y+14,3,0,6.3); ctx.fill(); ctx.beginPath(); ctx.arc(x+7,y+14,3,0,6.3); ctx.fill();
   // lid
-  ctx.fillStyle = isDev && b.dev==='tom' ? '#7fb6dd' : (isDev?'#3c4541':'#25843e');
-  if(isDev && (b.dev==='tom')){ // open lid
-    ctx.save(); ctx.translate(x-11,y-12); ctx.rotate(-0.7); ctx.fillStyle='#3c4541'; roundRect(0,-5,24,6,2); ctx.fill(); ctx.restore();
-    ctx.fillStyle='#2b3330'; ctx.fillRect(x-8,y-9,16,8); // dark empty interior
-  } else {
-    ctx.fillStyle=isDev?'#3c4541':'#25843e'; roundRect(x-12,y-16,24,7,3); ctx.fill();
+  if(isDev && b.dev==='tom'){ ctx.save(); ctx.translate(x-11,y-10); ctx.rotate(-0.85); ctx.fillStyle=lid; roundRect(0,-6,24,7,3); ctx.fill(); ctx.restore(); ctx.fillStyle='#2b3330'; roundRect(x-8,y-8,16,8,2); ctx.fill(); }
+  else { ctx.fillStyle=lid; roundRect(x-13,y-16,26,8,4); ctx.fill(); }
+  // face
+  const eyeY=y-1, blink=b.blink>0;
+  if(blink){ ctx.fillStyle='#fff'; ctx.fillRect(x-7,eyeY,4,1.6); ctx.fillRect(x+3,eyeY,4,1.6); }
+  else {
+    ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(x-5,eyeY,2.7,0,6.3); ctx.fill(); ctx.beginPath(); ctx.arc(x+5,eyeY,2.7,0,6.3); ctx.fill();
+    ctx.fillStyle='#222b27'; const py=isDev?-0.9:0.5; ctx.beginPath(); ctx.arc(x-5,eyeY+py,1.3,0,6.3); ctx.fill(); ctx.beginPath(); ctx.arc(x+5,eyeY+py,1.3,0,6.3); ctx.fill();
   }
-  // wheels hint
-  ctx.fillStyle='rgba(0,0,0,.4)'; ctx.fillRect(x-9,y+11,4,3); ctx.fillRect(x+5,y+11,4,3);
-
-  // deviation marker above
+  ctx.strokeStyle='#222b27'; ctx.lineWidth=1.4; ctx.lineCap='round'; ctx.beginPath();
+  if(isDev) ctx.arc(x,y+9,3,Math.PI*1.15,Math.PI*1.85); else ctx.arc(x,y+5,3,0.12*Math.PI,0.88*Math.PI);
+  ctx.stroke();
+  // deviation marker + scene prop
   if(isDev){
-    const info=DEV_INFO[b.dev];
-    const bob=Math.sin(game.time*3+b.id)*2;
+    const info=DEV_INFO[b.dev]; const bob=Math.sin(game.time*3.2+b.id)*2;
     ctx.fillStyle=info.color; ctx.beginPath(); ctx.arc(x,y-30+bob,12,0,6.3); ctx.fill();
-    ctx.fillStyle='#fff'; ctx.font='700 13px Fredoka'; ctx.textAlign='center'; ctx.fillText('!',x,y-25.5+bob);
-    // scene prop
+    ctx.fillStyle='rgba(255,255,255,.3)'; ctx.beginPath(); ctx.arc(x-3,y-33+bob,4,0,6.3); ctx.fill();
+    ctx.fillStyle='#fff'; ctx.font='700 14px Fredoka, sans-serif'; ctx.textAlign='center'; ctx.fillText('!',x,y-25.5+bob);
     drawDevProp(b,x,y);
   }
 }
@@ -930,25 +982,32 @@ function drawDevProp(b,x,y){
 }
 
 function drawTruck(t){
-  ctx.save(); ctx.translate(t.x,t.y); ctx.rotate(t.ang);
+  const sp=Math.hypot(t.vx,t.vy);
+  const bob=Math.sin(game.time*13)*(sp>20?1.2:0.3);
+  ctx.save(); ctx.translate(t.x, t.y+bob); ctx.rotate(t.ang);
   // shadow
-  ctx.fillStyle='rgba(0,0,0,.22)'; roundRect(-22,-13,46,28,7); ctx.fill();
-  // hopper (back)
-  ctx.fillStyle='#1f7d3a'; roundRect(-24,-14,24,28,5); ctx.fill();
-  ctx.fillStyle='#17632e'; roundRect(-24,-14,8,28,5); ctx.fill(); // tailgate
-  // body
-  ctx.fillStyle='#2fa84f'; roundRect(-2,-13,20,26,5); ctx.fill();
-  // cab
-  ctx.fillStyle='#38bd5b'; roundRect(14,-12,12,24,5); ctx.fill();
-  // windshield
-  ctx.fillStyle='#bfe9ff'; roundRect(22,-9,5,18,2); ctx.fill();
-  // warning stripe
-  ctx.fillStyle='#e8c22e'; ctx.fillRect(-2,-14,4,28);
-  ctx.fillStyle='rgba(255,255,255,.85)'; ctx.fillRect(-20,-2,14,4);
+  ctx.fillStyle='rgba(0,0,0,.22)'; roundRect(-25,-15,52,31,10); ctx.fill();
   // wheels
-  ctx.fillStyle='#15241f'; roundRect(-20,-17,8,5,2); ctx.fill(); roundRect(-20,12,8,5,2); ctx.fill(); roundRect(10,-17,8,5,2); ctx.fill(); roundRect(10,12,8,5,2); ctx.fill();
+  ctx.fillStyle='#15241f'; roundRect(-21,-18,9,6,3); ctx.fill(); roundRect(-21,12,9,6,3); ctx.fill(); roundRect(9,-18,9,6,3); ctx.fill(); roundRect(9,12,9,6,3); ctx.fill();
+  // hopper (back)
+  ctx.fillStyle='#1f9d47'; roundRect(-25,-14,26,28,7); ctx.fill();
+  ctx.fillStyle='#17812f'; roundRect(-25,-14,9,28,6); ctx.fill();
+  // body
+  ctx.fillStyle='#2fbf55'; roundRect(-3,-13,22,26,7); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.16)'; roundRect(-3,-13,22,9,7); ctx.fill();
+  // warning stripe
+  ctx.fillStyle='#ffd23f'; roundRect(-3,-14,5,28,2); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.9)'; roundRect(-22,-2,15,4,2); ctx.fill();
+  // cab
+  ctx.fillStyle='#39d166'; roundRect(13,-12,14,24,7); ctx.fill();
+  // windshield
+  ctx.fillStyle='#bfe9ff'; roundRect(19,-9,8,18,3); ctx.fill();
+  // eyes looking forward
+  const blink=game.truckBlink>0;
+  if(blink){ ctx.fillStyle='#fff'; ctx.fillRect(22,-6,5,1.7); ctx.fillRect(22,4.3,5,1.7); }
+  else{ ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(24,-4,3.2,0,6.3); ctx.fill(); ctx.beginPath(); ctx.arc(24,5,3.2,0,6.3); ctx.fill(); ctx.fillStyle='#222b27'; ctx.beginPath(); ctx.arc(25.4,-4,1.5,0,6.3); ctx.fill(); ctx.beginPath(); ctx.arc(25.4,5,1.5,0,6.3); ctx.fill(); }
   // beacon blink
-  if(((game.time*2)|0)%2===0){ ctx.fillStyle='#ffd34d'; ctx.beginPath(); ctx.arc(16,0,3,0,6.3); ctx.fill(); }
+  if(((game.time*3)|0)%2===0){ ctx.fillStyle='#ffd83d'; roundRect(3,-15,6,4,2); ctx.fill(); }
   ctx.restore();
 }
 
