@@ -234,6 +234,16 @@
   .score-row .nm{flex:1;min-width:0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .score-row .sc{font-family:Fredoka;font-weight:700;color:var(--green-d);font-variant-numeric:tabular-nums;flex:0 0 auto}
   .score-empty{color:var(--ink-soft);font-size:14.5px;padding:8px 0}
+  /* profiles */
+  .prof-row{display:flex;align-items:center;gap:12px;border:2px solid var(--line);border-radius:16px;padding:11px 13px;margin-bottom:9px;cursor:pointer;background:#fff;text-align:left;width:100%;font-family:inherit;color:var(--ink)}
+  .prof-row:active{transform:scale(.995)}
+  .prof-row.sel{border-color:var(--green);background:var(--green-l)}
+  .prof-ava{width:46px;height:46px;border-radius:12px;background:var(--panel-2);display:grid;place-items:center;font-size:24px;flex:0 0 auto}
+  .prof-meta{flex:1;min-width:0}
+  .prof-meta b{font-family:Fredoka;font-size:17px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .prof-meta span{font-size:13px;color:var(--ink-soft)}
+  .prof-badge{font-size:13.5px;font-weight:700;color:var(--green-d);flex:0 0 auto}
+  .prof-del{border:none;background:transparent;font-size:19px;cursor:pointer;color:var(--ink-soft);padding:6px;flex:0 0 auto;line-height:1}
 
   .toast{
     position:absolute;left:50%;top:112px;transform:translateX(-50%) translateY(-6px);
@@ -380,14 +390,25 @@
     </div>
   </div>
 
-  <!-- NICKNAME -->
-  <div class="overlay pausemenu" id="nick">
+  <!-- PROFILES -->
+  <div class="overlay pausemenu" id="profiles">
     <div class="sheet">
       <div class="card">
-        <h2>Vem kör? 🚛</h2>
-        <p class="sub">Skriv ditt nickname så hamnar dina resultat på topplistan.</p>
-        <input id="nickInput" class="nick-input" maxlength="14" placeholder="Ditt namn" autocomplete="off" autocapitalize="words">
-        <button class="bigbtn" id="nickGo" style="margin-top:14px">Nu kör vi! ▶</button>
+        <h2>Spelare 👤</h2>
+        <p class="sub">Varje spelare har sin egen bil, kassa, nivå och upplåsta världar. Byt eller lägg till.</p>
+        <div id="profileList"></div>
+        <div id="newProfileWrap" hidden style="margin-top:14px">
+          <input id="profileInput" class="nick-input" maxlength="14" placeholder="Namn" autocomplete="off" autocapitalize="words">
+          <div style="display:flex;gap:10px;margin-top:10px">
+            <button class="bigbtn" id="profileSave" style="flex:1">Spara</button>
+            <button class="bigbtn dark" id="profileCancel" style="flex:0 0 auto;padding:18px 22px">✕</button>
+          </div>
+        </div>
+        <div id="profileActions" style="display:flex;gap:10px;margin-top:14px">
+          <button class="bigbtn" id="addProfileBtn" style="flex:1;font-size:17px;padding:16px">+ Ny spelare</button>
+          <button class="bigbtn dark" id="renameBtn" style="flex:1;font-size:17px;padding:16px">✎ Byt namn</button>
+        </div>
+        <button class="bigbtn dark" id="profilesClose" style="margin-top:12px">Klar</button>
       </div>
     </div>
   </div>
@@ -415,30 +436,58 @@ window.addEventListener('orientationchange', ()=>setTimeout(resize,120));
 if(window.visualViewport) window.visualViewport.addEventListener('resize', resize);
 
 // ---------------- persistence ----------------
-const SAVE_KEY = 'sopbil.save.v1';
-const DEFAULT_SAVE = {
+const SAVE_KEY = 'sopbil.save.v1';   // legacy single-save (migrated once)
+const META_KEY = 'sopbil.meta.v1';   // multi-profile store
+function blankProfile(){ return {
   money:0, day:1, upg:{motor:0,dack:0,komp:0},
   unlocked:{stad:true,land:false,oar:false,strand:false,vinter:false,neon:false},
-  lastRoute:'stad', best:0, sound:true, zoom:1.5, zoomMigrated:true,
-  name:'', scores:[], cosmetics:{color:'green', tires:0, lights:0, ownColors:['green']}
-};
-function loadSave(){
-  try{ const s = JSON.parse(localStorage.getItem(SAVE_KEY)); if(s&&typeof s.money==='number'){
-    const m = Object.assign({},DEFAULT_SAVE, s, {
-      upg:Object.assign({},DEFAULT_SAVE.upg,s.upg),
-      unlocked:Object.assign({},DEFAULT_SAVE.unlocked,s.unlocked),
-      cosmetics:Object.assign({},DEFAULT_SAVE.cosmetics,s.cosmetics),
-      scores:Array.isArray(s.scores)?s.scores:[]
-    });
-    if(!Array.isArray(m.cosmetics.ownColors)||!m.cosmetics.ownColors.length) m.cosmetics.ownColors=['green'];
-    // one-time bump so older, too-small saved zoom levels get the bigger default
-    if(!s.zoomMigrated){ m.zoom = Math.max(1.5, m.zoom||0); m.zoomMigrated = true; }
-    return m;
-  } }catch(e){}
-  return JSON.parse(JSON.stringify(DEFAULT_SAVE));
+  best:0, lastRoute:'stad', cosmetics:{color:'green',tires:0,lights:0,ownColors:['green']}
+}; }
+function normProfile(p){
+  const b=blankProfile(), r=Object.assign(b, p||{});
+  r.upg=Object.assign(blankProfile().upg, p&&p.upg);
+  r.unlocked=Object.assign(blankProfile().unlocked, p&&p.unlocked);
+  r.cosmetics=Object.assign(blankProfile().cosmetics, p&&p.cosmetics);
+  if(!Array.isArray(r.cosmetics.ownColors)||!r.cosmetics.ownColors.length) r.cosmetics.ownColors=['green'];
+  return r;
 }
-let save = loadSave();
-function persist(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(save)); }catch(e){} }
+function normMeta(m){
+  m=m||{}; m.profiles=m.profiles||{};
+  if(!Object.keys(m.profiles).length) m.profiles={'Spelare 1':blankProfile()};
+  for(const n of Object.keys(m.profiles)) m.profiles[n]=normProfile(m.profiles[n]);
+  if(!m.active || !m.profiles[m.active]) m.active=Object.keys(m.profiles)[0];
+  m.scores=Array.isArray(m.scores)?m.scores:[];
+  if(typeof m.sound!=='boolean') m.sound=true;
+  m.zoom=m.zoom||1.5; m.zoomMigrated=true;
+  return m;
+}
+function loadMeta(){
+  try{ const m=JSON.parse(localStorage.getItem(META_KEY)); if(m&&m.profiles) return normMeta(m); }catch(e){}
+  // migrate legacy single save into profile 1
+  try{ const s=JSON.parse(localStorage.getItem(SAVE_KEY)); if(s&&typeof s.money==='number'){
+    const nm=(s.name&&String(s.name).trim())||'Spelare 1';
+    const prof=normProfile({money:s.money,day:s.day,upg:s.upg,unlocked:s.unlocked,best:s.best,cosmetics:s.cosmetics,lastRoute:s.lastRoute});
+    return normMeta({active:nm, profiles:{[nm]:prof}, scores:s.scores, sound:s.sound, zoom:s.zoom});
+  } }catch(e){}
+  return normMeta({});
+}
+let meta = loadMeta();
+let save = {};
+function applyProfile(){
+  const p = meta.profiles[meta.active];
+  save = {
+    name: meta.active,
+    sound: meta.sound!==false, zoom: meta.zoom||1.5, zoomMigrated:true, scores: meta.scores,
+    money:p.money, day:p.day, upg:p.upg, unlocked:p.unlocked, best:p.best, cosmetics:p.cosmetics, lastRoute:p.lastRoute||'stad'
+  };
+}
+applyProfile();
+function persist(){
+  const p = meta.profiles[meta.active];
+  if(p){ p.money=save.money; p.day=save.day; p.upg=save.upg; p.unlocked=save.unlocked; p.best=save.best; p.cosmetics=save.cosmetics; p.lastRoute=save.lastRoute; }
+  meta.sound=save.sound; meta.zoom=save.zoom; meta.scores=save.scores; meta.zoomMigrated=true;
+  try{ localStorage.setItem(META_KEY, JSON.stringify(meta)); }catch(e){}
+}
 
 // ---------------- upgrade defs ----------------
 const UPG = {
@@ -1545,18 +1594,82 @@ function renderCosmetics(){
   else { lb.className='buybtn maxed'; lb.disabled=true; lb.textContent='MAX'; }
   lrow.appendChild(lb); el.appendChild(lrow);
 }
-// nickname modal
-const nickOv=document.getElementById('nick'), nickInput=document.getElementById('nickInput');
-function openNick(then){ nickInput.value=save.name||''; nickOv._then=then||null; nickOv.classList.add('show'); setTimeout(()=>{ try{nickInput.focus();}catch(e){} },60); }
-function closeNick(){ nickOv.classList.remove('show'); }
-document.getElementById('playerChip').onclick=()=>{ uiClick(); openNick(null); };
-document.getElementById('nickGo').onclick=()=>{ const v=(nickInput.value||'').trim().slice(0,14)||'Spelare'; save.name=v; persist(); renderPlayer(); const then=nickOv._then; closeNick(); uiClick(); if(then) then(); };
-nickInput.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); document.getElementById('nickGo').click(); } });
+// ---------------- profiles ----------------
+function profileLevel(p){
+  let lv=1;
+  ['land','oar','strand','vinter','neon'].forEach(w=>{ if(p.unlocked&&p.unlocked[w]) lv++; });
+  const u=p.upg||{}; lv += (u.motor||0)+(u.dack||0)+(u.komp||0);
+  const c=p.cosmetics||{}; lv += (c.tires||0)+(c.lights||0);
+  return lv;
+}
+const profOv=document.getElementById('profiles');
+const profInput=document.getElementById('profileInput');
+const newWrap=document.getElementById('newProfileWrap');
+const profActions=document.getElementById('profileActions');
+let _pendingDelete=null;
+
+function openProfiles(){ hideNewProfile(); renderProfiles(); profOv.classList.add('show'); }
+function closeProfiles(){ profOv.classList.remove('show'); }
+function showNewProfile(mode){ newWrap._mode=mode; newWrap.hidden=false; profActions.style.display='none'; profInput.value = mode==='rename' ? (save.name||'') : ''; setTimeout(()=>{ try{profInput.focus();}catch(e){} },60); }
+function hideNewProfile(){ newWrap.hidden=true; profActions.style.display='flex'; }
+
+function renderProfiles(){
+  const el=document.getElementById('profileList'); if(!el) return; el.innerHTML='';
+  const names=Object.keys(meta.profiles);
+  names.forEach(name=>{
+    const p=meta.profiles[name], isActive=name===meta.active;
+    const row=document.createElement('div'); row.className='prof-row'+(isActive?' sel':'');
+    row.innerHTML=`<div class="prof-ava">${isActive?'🚛':'👤'}</div>
+      <div class="prof-meta"><b>${esc(name)}</b><span>Nivå ${profileLevel(p)} · Dag ${p.day} · ${Math.round(p.money)} kr</span></div>
+      ${isActive?'<span class="prof-badge">Vald</span>':(names.length>1?'<button class="prof-del" title="Ta bort">🗑</button>':'')}`;
+    row.onclick=()=>{ if(!isActive) switchProfile(name); };
+    const del=row.querySelector('.prof-del');
+    if(del) del.onclick=(e)=>{ e.stopPropagation(); if(confirmDelete(name)) deleteProfile(name); };
+    el.appendChild(row);
+  });
+}
+function confirmDelete(name){
+  if(_pendingDelete===name){ _pendingDelete=null; return true; }
+  _pendingDelete=name; toast('Tryck på 🗑 igen för att ta bort "'+name+'"','bad');
+  setTimeout(()=>{ if(_pendingDelete===name) _pendingDelete=null; },2500); return false;
+}
+function switchProfile(name){
+  if(!meta.profiles[name]||name===meta.active) return;
+  persist(); meta.active=name; applyProfile();
+  game.routeId = (save.lastRoute && save.unlocked[save.lastRoute]) ? save.lastRoute : 'stad';
+  persist(); uiClick(); buildGarage(); closeProfiles();
+}
+function addProfile(name){
+  name=(name||'').trim().slice(0,14); if(!name) name='Spelare '+(Object.keys(meta.profiles).length+1);
+  let base=name,n=2; while(meta.profiles[name]){ name=base+' '+n; n++; }
+  persist(); meta.profiles[name]=blankProfile(); meta.active=name; applyProfile(); game.routeId='stad';
+  persist(); cashSound(); buildGarage(); closeProfiles();
+  toast('Välkommen, '+name+'! 🚛','good');
+}
+function renameProfile(newName){
+  newName=(newName||'').trim().slice(0,14); const old=meta.active; if(!newName||newName===old) return;
+  let base=newName,n=2; while(meta.profiles[newName]){ newName=base+' '+n; n++; }
+  meta.profiles[newName]=meta.profiles[old]; delete meta.profiles[old]; meta.active=newName;
+  applyProfile(); persist(); uiClick(); buildGarage(); renderProfiles();
+}
+function deleteProfile(name){
+  if(Object.keys(meta.profiles).length<=1) return;
+  delete meta.profiles[name];
+  if(meta.active===name){ meta.active=Object.keys(meta.profiles)[0]; applyProfile(); game.routeId = save.unlocked[save.lastRoute]?save.lastRoute:'stad'; }
+  persist(); uiClick(); buildGarage(); renderProfiles();
+}
+document.getElementById('playerChip').onclick=()=>{ uiClick(); openProfiles(); };
+document.getElementById('addProfileBtn').onclick=()=>{ uiClick(); showNewProfile('add'); };
+document.getElementById('renameBtn').onclick=()=>{ uiClick(); showNewProfile('rename'); };
+document.getElementById('profileCancel').onclick=()=>{ hideNewProfile(); };
+document.getElementById('profileSave').onclick=()=>{ const v=profInput.value, mode=newWrap._mode; hideNewProfile(); if(mode==='rename') renameProfile(v); else addProfile(v); };
+document.getElementById('profilesClose').onclick=()=>{ closeProfiles(); };
+profInput.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); document.getElementById('profileSave').click(); } });
 
 // ---------------- buttons ----------------
 document.getElementById('startBtn').onclick=()=>{
   if(actx&&actx.state==='suspended')actx.resume();
-  if(!save.name){ openNick(()=>startDay()); } else startDay();
+  startDay();
 };
 
 function openPause(){
@@ -1598,14 +1711,15 @@ function boot(){
   game.screen='garage';
   document.getElementById('garage').classList.add('show');
   buildGarage();
+  persist(); // write migrated/multi-profile meta to storage
   requestAnimationFrame(frame);
 }
 // hot reload for open viewers (keeps progress mid-conversation)
 try{
   if(window.claude&&window.claude.hot){
-    window.claude.hot.snapshot&&window.claude.hot.snapshot(()=>({save}));
+    window.claude.hot.snapshot&&window.claude.hot.snapshot(()=>({meta}));
     const data = window.claude.hot.data;
-    if(data&&data.save){ save=Object.assign(JSON.parse(JSON.stringify(DEFAULT_SAVE)),data.save); }
+    if(data&&data.meta){ meta=normMeta(data.meta); applyProfile(); }
   }
 }catch(e){}
 boot();
