@@ -205,6 +205,36 @@
   .helplist .he{font-size:22px;line-height:1;flex:0 0 auto}
   .helplist b{color:var(--ink)}
 
+  /* wallet + player */
+  .walletbar{display:flex;gap:10px;align-items:stretch;margin:0 2px 15px}
+  .wallet-money{flex:1;background:var(--panel);border-radius:16px;box-shadow:var(--shadow);padding:11px 16px;display:flex;flex-direction:column;gap:2px}
+  .wallet-money .k{font-size:12px;font-weight:700;color:var(--ink-soft);letter-spacing:.04em}
+  .wallet-money .v{font-family:Fredoka;font-weight:700;font-size:27px;color:var(--green-d);line-height:1;font-variant-numeric:tabular-nums}
+  .playerchip{border:none;background:var(--panel);border-radius:16px;box-shadow:var(--shadow);padding:0 16px;font-family:Fredoka;font-weight:600;font-size:15px;color:var(--ink);cursor:pointer;display:flex;align-items:center;gap:5px;max-width:48%}
+  .playerchip:active{transform:scale(.97)}
+  .playerchip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .nick-input{width:100%;border:2px solid var(--line);border-radius:14px;padding:15px 16px;font-family:Fredoka;font-weight:600;font-size:21px;color:var(--ink);outline:none;text-align:center;background:#fff}
+  .nick-input:focus{border-color:var(--green)}
+  /* cosmetics */
+  .cos-row{display:flex;align-items:center;gap:13px;padding:14px 0;border-top:1px solid var(--line)}
+  .cos-row:first-child{border-top:none}
+  .cos-row .uic{width:48px;height:48px;border-radius:13px;background:var(--panel-2);display:grid;place-items:center;font-size:25px;flex:0 0 auto}
+  .cos-row .um b{font-family:Fredoka;font-size:16px;display:block}
+  .cos-swatches{display:flex;flex-wrap:wrap;gap:9px 11px;padding-bottom:8px}
+  .swatch{width:46px;height:46px;border-radius:12px;border:3px solid transparent;cursor:pointer;position:relative;box-shadow:inset 0 -6px 0 rgba(0,0,0,.18)}
+  .swatch:active{transform:scale(.94)}
+  .swatch.sel{border-color:var(--ink)}
+  .swatch.locked{opacity:.92}
+  .swatch.locked::before{content:'🔒';position:absolute;inset:0;display:grid;place-items:center;font-size:15px}
+  .swatch .price{position:absolute;left:-4px;right:-4px;bottom:-15px;text-align:center;font-size:10px;font-weight:700;color:var(--ink-soft)}
+  /* scores */
+  .score-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line);font-size:15.5px}
+  .score-row:first-child{border-top:none}
+  .score-row .rank{font-family:Fredoka;font-weight:700;width:26px;color:var(--ink-soft);flex:0 0 auto}
+  .score-row .nm{flex:1;min-width:0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .score-row .sc{font-family:Fredoka;font-weight:700;color:var(--green-d);font-variant-numeric:tabular-nums;flex:0 0 auto}
+  .score-empty{color:var(--ink-soft);font-size:14.5px;padding:8px 0}
+
   .toast{
     position:absolute;left:50%;top:112px;transform:translateX(-50%) translateY(-6px);
     background:var(--ink);color:#fff;padding:9px 16px;border-radius:999px;font-weight:600;font-size:14px;
@@ -272,6 +302,11 @@
         <div><h1>Sopbilspasset</h1><p>Kör rutten · töm kärlen · rapportera avvikelserna</p></div>
       </div>
 
+      <div class="walletbar">
+        <div class="wallet-money"><span class="k">💰 Kassa</span><span class="v" id="wallet">0 kr</span></div>
+        <button class="playerchip" id="playerChip">👤 <span id="playerName">Spelare</span> ✎</button>
+      </div>
+
       <div class="card">
         <h2>Dagens körtur</h2>
         <p class="sub">Välj vilket område du kör idag. Nya områden låser du upp med intjänade pengar.</p>
@@ -282,6 +317,18 @@
         <h2>Rusta upp bilen 🔧</h2>
         <p class="sub">Pengarna du tjänar lägger du på sopbilen — snabbare, stadigare och effektivare.</p>
         <div id="upgList"></div>
+      </div>
+
+      <div class="card">
+        <h2>Styla bilen 🎨</h2>
+        <p class="sub">Gör sopbilen till din egen — färg, feta däck och extra blinklysen.</p>
+        <div id="cosmetics"></div>
+      </div>
+
+      <div class="card">
+        <h2>Topplista 🏆</h2>
+        <p class="sub">Dina bästa pass. Varje spelare skriver sitt nickname innan start.</p>
+        <div id="scoreList"></div>
       </div>
 
       <div class="card">
@@ -332,6 +379,18 @@
       </div>
     </div>
   </div>
+
+  <!-- NICKNAME -->
+  <div class="overlay pausemenu" id="nick">
+    <div class="sheet">
+      <div class="card">
+        <h2>Vem kör? 🚛</h2>
+        <p class="sub">Skriv ditt nickname så hamnar dina resultat på topplistan.</p>
+        <input id="nickInput" class="nick-input" maxlength="14" placeholder="Ditt namn" autocomplete="off" autocapitalize="words">
+        <button class="bigbtn" id="nickGo" style="margin-top:14px">Nu kör vi! ▶</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -357,10 +416,21 @@ if(window.visualViewport) window.visualViewport.addEventListener('resize', resiz
 
 // ---------------- persistence ----------------
 const SAVE_KEY = 'sopbil.save.v1';
-const DEFAULT_SAVE = { money:0, day:1, upg:{motor:0,dack:0,komp:0}, unlocked:{stad:true,land:false,oar:false}, lastRoute:'stad', best:0, sound:true, zoom:1.5, zoomMigrated:true };
+const DEFAULT_SAVE = {
+  money:0, day:1, upg:{motor:0,dack:0,komp:0},
+  unlocked:{stad:true,land:false,oar:false,strand:false,vinter:false,neon:false},
+  lastRoute:'stad', best:0, sound:true, zoom:1.5, zoomMigrated:true,
+  name:'', scores:[], cosmetics:{color:'green', tires:0, lights:0, ownColors:['green']}
+};
 function loadSave(){
   try{ const s = JSON.parse(localStorage.getItem(SAVE_KEY)); if(s&&typeof s.money==='number'){
-    const m = Object.assign({},DEFAULT_SAVE, s, {upg:Object.assign({},DEFAULT_SAVE.upg,s.upg), unlocked:Object.assign({},DEFAULT_SAVE.unlocked,s.unlocked)});
+    const m = Object.assign({},DEFAULT_SAVE, s, {
+      upg:Object.assign({},DEFAULT_SAVE.upg,s.upg),
+      unlocked:Object.assign({},DEFAULT_SAVE.unlocked,s.unlocked),
+      cosmetics:Object.assign({},DEFAULT_SAVE.cosmetics,s.cosmetics),
+      scores:Array.isArray(s.scores)?s.scores:[]
+    });
+    if(!Array.isArray(m.cosmetics.ownColors)||!m.cosmetics.ownColors.length) m.cosmetics.ownColors=['green'];
     // one-time bump so older, too-small saved zoom levels get the bigger default
     if(!s.zoomMigrated){ m.zoom = Math.max(1.5, m.zoom||0); m.zoomMigrated = true; }
     return m;
@@ -376,7 +446,34 @@ const UPG = {
   dack :{ name:'Däck & fäste', ic:'🛞', desc:'Snabbare acceleration & styrning', costs:[140,280,460], max:3 },
   komp :{ name:'Komprimator', ic:'🗜️', desc:'Snabbare tömning & bättre betalt', costs:[200,380], max:2 },
 };
-const ROUTE_UNLOCK = { land:260, oar:520 };
+// ---- six worlds, difficulty & bins increase down the list ----
+const WORLDS = {
+  stad:  {name:'Stad',              emoji:'🏙️', bg:'#dbe9f7', desc:'Rutnät av gator, hög kärltäthet',        unlock:0,    bins:12, devRatio:0.40},
+  land:  {name:'Landsbygd',         emoji:'🌾', bg:'#eef3d6', desc:'Långa vägar, åkrar och en bro',          unlock:220,  bins:14, devRatio:0.42},
+  oar:   {name:'Skärgård & broar',  emoji:'🏝️', bg:'#d4ecf5', desc:'Öar förbundna med broar över vatten',    unlock:460,  bins:16, devRatio:0.45},
+  strand:{name:'Tropikön',          emoji:'🏖️', bg:'#ffe9c2', desc:'Sandvägar, strand & hav — hajar lurar! 🦈', unlock:820,  bins:18, devRatio:0.48},
+  vinter:{name:'Vintervärlden',     emoji:'❄️', bg:'#dbeeff', desc:'Is, iglor, pingviner — isbjörnar jagar! 🐻‍❄️', unlock:1300, bins:20, devRatio:0.50},
+  neon:  {name:'Neonstaden',        emoji:'🌃', bg:'#241d47', desc:'Nattstad i neon — mörkast och svårast',   unlock:2000, bins:22, devRatio:0.52},
+};
+const WORLD_ORDER = ['stad','land','oar','strand','vinter','neon'];
+const ROUTE_UNLOCK = {}; WORLD_ORDER.forEach(id=>{ if(WORLDS[id].unlock>0) ROUTE_UNLOCK[id]=WORLDS[id].unlock; });
+
+// ---- paint shop: truck colours you can buy ----
+const TRUCK_COLORS = {
+  green: {name:'Klassisk grön', body:'#2fbf55', dark:'#1f9d47', cab:'#39d166', cost:0},
+  red:   {name:'Röd blixt',     body:'#e8483a', dark:'#b8352a', cab:'#f26a5d', cost:120},
+  blue:  {name:'Blå dunder',    body:'#2f7fd1', dark:'#2160a0', cab:'#5a9ee0', cost:120},
+  orange:{name:'Orange eld',    body:'#ff8f33', dark:'#d86f16', cab:'#ffab5e', cost:150},
+  pink:  {name:'Hetrosa',       body:'#ff5da8', dark:'#d83d85', cab:'#ff85c0', cost:180},
+  black: {name:'Nattsvart',     body:'#2b3038', dark:'#171b20', cab:'#3c434d', cost:220},
+  gold:  {name:'Guldtrucken',   body:'#e8b43a', dark:'#bf8d1c', cab:'#ffd36a', cost:400},
+};
+const TIRES = [
+  {name:'Standarddäck', cost:0},
+  {name:'Breda offroad-däck', cost:170},
+  {name:'Monsterdäck', cost:360},
+];
+const LIGHT_COST = [90, 150, 230]; // buy blinker light #1, #2, #3
 
 function motorMax(){ return 160 + save.upg.motor*36; }        // px/s
 function accelRate(){ return 7.0 + save.upg.dack*1.7; }        // approach factor
@@ -399,7 +496,7 @@ function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=(Math.random()*(i+1)
 function inRect(x,y,r,pad=0){ return x>=r.x-pad && x<=r.x+r.w+pad && y>=r.y-pad && y<=r.y+r.h+pad; }
 
 function makeRoute(id){
-  const R = { id, roads:[], bridges:[], water:[], islands:[], obstacles:[], decos:[], ground:'#8ec16a', bins:[] };
+  const R = { id, roads:[], bridges:[], water:[], islands:[], obstacles:[], decos:[], chasers:[], ground:'#8ec16a', bins:[] };
   const spots = []; // {x,y}
   const RW = 108;
 
@@ -458,7 +555,7 @@ function makeRoute(id){
     binsAlongV(b1,-1,250); binsAlongV(b2,1,260); binsAlongH(b3,-1,260);
     R.start={x:300,y:1030};
   }
-  else { // oar — archipelago / bridges, ground is sea
+  else if(id==='oar'){ // oar — archipelago / bridges, ground is sea
     R.world={w:2700,h:2060}; R.ground='#37a6d4'; R.sea=true;
     const isl=[
       {x:90,y:170,w:860,h:760},    // A top-left
@@ -487,20 +584,77 @@ function makeRoute(id){
     isl.forEach(i=>R.decos.push({t:'sand',x:i.x-18,y:i.y-18,w:i.w+36,h:i.h+36,c:'#e4d8a6'}));
     R.start={x:isl[0].x+isl[0].w/2, y:isl[0].y+isl[0].h/2};
   }
+  else if(id==='strand'){ // Tropikön — sand, beach, sea with sharks
+    R.world={w:3000,h:2100}; R.ground='#f1dca6'; R.sand=true;
+    R.water.push({x:0,y:1500,w:3000,h:600});
+    const hs=[300,760,1220].map(y=>hRoad(140,2860,y));
+    const vs=[360,1060,1760,2460].map(x=>vRoad(150,1340,x));
+    // island out in the sea, reached by a pier bridge across shark waters
+    const isl={x:1480,y:1700,w:560,h:330}; R.islands.push(isl);
+    R.bridges.push({x:1706,y:1340,w:108,h:372}); R.roads.push({x:1706,y:1340,w:108,h:372,dir:'v'});
+    const iv=vRoad(isl.y+30, isl.y+isl.h-30, 1760);
+    const ih=hRoad(isl.x+60, isl.x+isl.w-60, isl.y+isl.h/2);
+    binsAlongH(ih,1,210); binsAlongV(iv,-1,220);
+    for(let i=0;i<30;i++){ const x=rnd(120,2880), y=rnd(120,1440); let ok=true;
+      for(const r of R.roads) if(inRect(x,y,r,60)){ok=false;break;}
+      if(ok) R.decos.push({t:'palm',x,y,r:rnd(20,30)});
+    }
+    for(let i=0;i<5;i++) R.chasers.push({type:'shark', x:rnd(900,2300), y:rnd(1580,2040), speed:122, water:true, ang:0, cd:0});
+    hs.forEach((r,i)=>binsAlongH(r,i%2?-1:1,230));
+    vs.forEach((r,i)=>{ if(i%2) binsAlongV(r,1,250); });
+    R.start={x:360,y:300};
+  }
+  else if(id==='vinter'){ // Vintervärlden — ice, igloos, penguins, polar bears
+    R.world={w:2950,h:2050}; R.ground='#e9f4fc'; R.ice=true;
+    const hs=[320,800,1280,1740].map(y=>hRoad(150,2800,y));
+    const vs=[380,1120,1900,2620].map(x=>vRoad(160,1800,x));
+    R.water.push({x:1180,y:120,w:660,h:150}); // frozen pond
+    const icent=[[700,560],[2200,560],[700,1520],[2250,1520],[1500,1040]];
+    icent.forEach(c=>R.obstacles.push({x:c[0]-70,y:c[1]-46,w:140,h:92,kind:'igloo'}));
+    for(let i=0;i<26;i++){ const x=rnd(120,2820),y=rnd(120,1920); let ok=true;
+      for(const r of R.roads) if(inRect(x,y,r,56)){ok=false;break;}
+      for(const o of R.obstacles) if(inRect(x,y,o,20)) ok=false;
+      if(ok && !inRect(x,y,R.water[0],30)){ const q=Math.random(); R.decos.push(q<0.5?{t:'pine',x,y,r:rnd(18,28)}:(q<0.78?{t:'penguin',x,y}:{t:'snowman',x,y})); }
+    }
+    for(let i=0;i<3;i++){ let x=400,y=400,ok=false,tr=0; while(!ok&&tr++<24){ x=rnd(200,2700); y=rnd(200,1850); ok=canDriveAt(R,x,y) && Math.hypot(x-380,y-320)>520; } R.chasers.push({type:'bear',x,y,speed:98,ang:0,cd:0}); }
+    hs.forEach((r,i)=>binsAlongH(r,i%2?-1:1,230));
+    vs.forEach((r,i)=>{ if(i%2) binsAlongV(r,-1,250); });
+    R.start={x:380,y:320};
+  }
+  else { // neon — Neonstaden, night city (default fallthrough)
+    R.world={w:2600,h:1760}; R.ground='#171433'; R.night=true;
+    const hs=[260,700,1140,1540].map(y=>hRoad(120,2480,y));
+    const vs=[300,900,1500,2100,2480].map(x=>vRoad(120,1620,x));
+    const neon=['#ff3df0','#36f3ff','#ffe23d','#7b61ff','#ff5da8','#39ff88','#ff8f33'];
+    const cols=[120,300,900,1500,2100,2480,2500];
+    const rows=[120,260,700,1140,1540,1560];
+    for(let ci=0;ci<cols.length-1;ci++){ for(let ri=0;ri<rows.length-1;ri++){
+      const bx0=cols[ci]+44, bx1=cols[ci+1]-44, by0=rows[ri]+48, by1=rows[ri+1]-28;
+      const bw=bx1-bx0, bh=by1-by0; if(bw<70||bh<70) continue;
+      const nC=Math.max(1,Math.round(bw/150)), nR=Math.max(1,Math.round(bh/150));
+      const cw=bw/nC, ch=bh/nR;
+      for(let a=0;a<nC;a++){ for(let c2=0;c2<nR;c2++){ const mw=rnd(18,30), mh=rnd(20,30); const hw=cw-mw, hh=ch-mh; if(hw<46||hh<46) continue; R.obstacles.push({x:bx0+a*cw+mw/2,y:by0+c2*ch+mh/2,w:hw,h:hh,kind:'neon',neon:pick(neon)}); }}
+    }}
+    for(const r of hs){ for(let x=r.x0+200;x<r.x1-120;x+=360) R.decos.push({t:'lamp',x,y:r.y-64}); }
+    hs.forEach((r,i)=>binsAlongH(r,i%2?-1:1,210));
+    vs.forEach((r,i)=>{ if(i%2) binsAlongV(r,1,220); });
+    R.start={x:300,y:260};
+  }
 
   // ---- validate spots & assign types ----
   const valid = spots.filter(s=>{
     if(s.x<40||s.y<40||s.x>R.world.w-40||s.y>R.world.h-40) return false;
     for(const o of R.obstacles) if(inRect(s.x,s.y,o,10)) return false;
-    for(const w of R.water) if(inRect(s.x,s.y,w,0)) return false;
-    if(R.sea){ let on=false; for(const i of R.islands) if(inRect(s.x,s.y,i,6)) on=true; if(!on) return false; }
+    let onIsland=false; for(const i of R.islands) if(inRect(s.x,s.y,i,6)) onIsland=true;
+    if(!onIsland){ for(const w of R.water) if(inRect(s.x,s.y,w,0)) return false; }
+    if(R.sea && !onIsland) return false;
     return true;
   });
   shuffle(valid);
-  const target = id==='stad'?15 : id==='land'?13 : 14;
+  const wcfg = WORLDS[id] || WORLDS.stad;
+  const target = wcfg.bins;
   const chosen = valid.slice(0, Math.min(target, valid.length));
-  // guarantee a spread of deviations (~45%)
-  const devCount = Math.max(4, Math.round(chosen.length*0.45));
+  const devCount = Math.max(4, Math.round(chosen.length*wcfg.devRatio));
   const devList=[]; let ti=0;
   for(let i=0;i<devCount;i++){ devList.push(DEV_TYPES[ti%DEV_TYPES.length]); ti++; }
   shuffle(devList);
@@ -511,10 +665,11 @@ function makeRoute(id){
   });
   shuffle(R.bins);
 
-  // playful ground detail: flowers & grass tufts
+  // playful ground detail by theme
   (function(){
-    const fc=['#ff7aa2','#ffd23f','#ff9e3d','#c77dff','#ffffff','#7ad0ff'];
-    const n = R.sea?44:82;
+    if(R.night) return; // neon city uses street lamps instead
+    const grass=['#ff7aa2','#ffd23f','#ff9e3d','#c77dff','#ffffff','#7ad0ff'];
+    const n = R.sea?44:(R.ice?40:72);
     for(let i=0;i<n;i++){
       let x=0,y=0,ok=false,tries=0;
       while(!ok && tries++<8){
@@ -523,16 +678,19 @@ function makeRoute(id){
         ok=true;
         for(const r of R.roads) if(inRect(x,y,r,16)){ok=false;break;}
         if(ok) for(const o of R.obstacles) if(inRect(x,y,o,8)){ok=false;break;}
-        if(ok) for(const w of R.water) if(inRect(x,y,w,10)){ok=false;break;}
+        if(ok){ let onI=false; for(const isl of R.islands) if(inRect(x,y,isl,0)) onI=true; if(!onI) for(const w of R.water) if(inRect(x,y,w,10)){ok=false;break;} }
       }
-      if(ok) R.decos.push(Math.random()<0.5?{t:'flower',x,y,c:pick(fc)}:{t:'tuft',x,y});
+      if(!ok) continue;
+      if(R.sand) R.decos.push(Math.random()<0.5?{t:'shell',x,y,c:pick(['#ff9e9e','#ffd27a','#ffffff','#f0a0c0'])}:{t:'starfish',x,y,c:pick(['#ff8f4d','#ffb13d','#e8604c'])});
+      else if(R.ice) R.decos.push(Math.random()<0.6?{t:'sparkle',x,y}:{t:'ice',x,y});
+      else R.decos.push(Math.random()<0.5?{t:'flower',x,y,c:pick(grass)}:{t:'tuft',x,y});
     }
   })();
   return R;
 }
 
 // ---------------- game state ----------------
-const ROUTE_NAMES = { stad:'Stad', land:'Landsbygd', oar:'Skärgård & broar' };
+const ROUTE_NAMES = {}; WORLD_ORDER.forEach(id=>ROUTE_NAMES[id]=WORLDS[id].name);
 const game = {
   screen:'garage', route:null, routeId:save.lastRoute||'stad',
   truck:{x:0,y:0,vx:0,vy:0,ang:-Math.PI/2},
@@ -642,14 +800,22 @@ function beep(freq,dur,type='sine',vol=0.06){
 }
 
 // ---------------- geometry helpers for driving ----------------
-function canDrive(x,y){
-  const R=game.route;
+function canDriveAt(R,x,y){
   if(x<24||y<24||x>R.world.w-24||y>R.world.h-24) return false;
   for(const o of R.obstacles) if(inRect(x,y,o,0)) return false;
   for(const b of R.bridges) if(inRect(x,y,b,4)) return true;
-  if(R.sea){ for(const i of R.islands) if(inRect(x,y,i,4)) return true; return false; }
+  for(const i of R.islands) if(inRect(x,y,i,4)) return true; // land patches
+  if(R.sea) return false;                                    // sea world: only islands/bridges
   for(const w of R.water) if(inRect(x,y,w,0)) return false;
   return true;
+}
+function canDrive(x,y){ return canDriveAt(game.route,x,y); }
+function inWater(x,y){
+  const R=game.route;
+  for(const i of R.islands) if(inRect(x,y,i,0)) return false;
+  for(const w of R.water) if(inRect(x,y,w,0)) return true;
+  if(R.sea) return x>4&&y>4&&x<R.world.w-4&&y<R.world.h-4;
+  return false;
 }
 function onFast(x,y){
   const R=game.route;
@@ -687,6 +853,17 @@ function crash(){
   toast('💥 Krock! Skada −'+fee+' kr','bad'); beep(120,0.26,'square'); buzz([30,40,30]);
   const t=game.truck;
   for(let i=0;i<7;i++){ const a=rnd(0,6.283); game.parts.push({x:t.x,y:t.y,vx:Math.cos(a)*rnd(40,120),vy:Math.sin(a)*rnd(40,120)-40,g:260,t:0,life:rnd(0.4,0.7),type:'smoke'}); }
+}
+
+function chaserBite(c){
+  c.cd=1.5;
+  const fee = c.type==='shark'?18:16;
+  game.damage+=fee; game.shake=reduceMotion?0:12; game.crashCd=1.0;
+  const t=game.truck; const dx=t.x-c.x,dy=t.y-c.y,d=Math.hypot(dx,dy)||1;
+  t.vx += dx/d*200; t.vy += dy/d*200;
+  toast((c.type==='shark'?'🦈 Hajbett! −':'🐻‍❄️ Isbjörn! −')+fee+' kr','bad');
+  beep(130,0.3,'sawtooth'); setTimeout(()=>beep(90,0.2,'sawtooth'),80); buzz([40,70,40]);
+  for(let i=0;i<9;i++){ const a=rnd(0,6.283); game.parts.push({x:t.x,y:t.y,vx:Math.cos(a)*rnd(50,150),vy:Math.sin(a)*rnd(50,150)-30,g:240,t:0,life:rnd(0.4,0.75),type:c.type==='shark'?'splash':'snowp'}); }
 }
 
 function resolveEmpty(b, auto){
@@ -747,6 +924,10 @@ function endDay(complete){
   const net = incEmpty+incDev+bonus-kundCost-dmg;
   const isRecord = net>save.best;
   if(isRecord) save.best=net;
+  // record the day on the local highscore board
+  (save.scores = save.scores||[]).push({ name: save.name||'Spelare', score: net, world: game.routeId });
+  save.scores.sort((a,b)=>b.score-a.score);
+  if(save.scores.length>30) save.scores.length=30;
   // actually settle the deductions against the wallet (never below 0)
   save.money = Math.max(0, save.money - kundCost - dmg);
   save.day += 1; save.lastRoute=game.routeId; persist();
@@ -836,7 +1017,8 @@ function update(dt){
   const maxV=motorMax()*(fast?1:0.58);
   const tvx=inMag>0.08 ? (ix/(Math.hypot(ix,iy)||1))*maxV*inMag : 0;
   const tvy=inMag>0.08 ? (iy/(Math.hypot(ix,iy)||1))*maxV*inMag : 0;
-  const ar=accelRate();
+  const grip = R.ice?0.5:1; // ice is slippery
+  const ar=accelRate()*grip;
   t.vx += (tvx-t.vx)*Math.min(1,ar*dt);
   t.vy += (tvy-t.vy)*Math.min(1,ar*dt);
 
@@ -852,7 +1034,7 @@ function update(dt){
   // charge for driving off the road (lawns, ditches, etc.)
   if(!fast && sp>28){ game.damage += 4*dt; game.offroad=true; } else game.offroad=false;
   if(game.shake>0) game.shake=Math.max(0, game.shake-dt*26);
-  if(sp>8){ let desired=Math.atan2(t.vy,t.vx); let da=((desired-t.ang+Math.PI)%(Math.PI*2))-Math.PI; t.ang+=da*Math.min(1,turnRate()*dt); }
+  if(sp>8){ let desired=Math.atan2(t.vy,t.vx); let da=((desired-t.ang+Math.PI)%(Math.PI*2))-Math.PI; t.ang+=da*Math.min(1,turnRate()*grip*dt); }
 
   // camera
   game.cam.x += (t.x-game.cam.x)*Math.min(1,8*dt);
@@ -877,6 +1059,26 @@ function update(dt){
   for(let i=game.parts.length-1;i>=0;i--){ const p=game.parts[i]; p.t+=dt; p.vy+=(p.g||0)*dt; p.x+=p.vx*dt; p.y+=p.vy*dt; p.vx*=0.98; if(p.t>p.life) game.parts.splice(i,1); }
   // clouds drift
   for(const c of game.clouds){ c.x+=c.vx*dt; if(c.x>R.world.w+260) c.x=-260; }
+  // chasers — sharks & polar bears hunt the truck
+  for(const c of R.chasers){
+    const dx=t.x-c.x, dy=t.y-c.y, d=Math.hypot(dx,dy)||1;
+    const aggro=c.water?560:470;
+    if(c.cd>0) c.cd-=dt;
+    if(d<aggro && d>26){
+      const sx=dx/d, sy=dy/d;
+      const nx=c.x+sx*c.speed*dt, ny=c.y+sy*c.speed*dt;
+      if(c.water){ if(inWater(nx,c.y)) c.x=nx; if(inWater(c.x,ny)) c.y=ny; }
+      else { if(canDrive(nx,c.y)) c.x=nx; if(canDrive(c.x,ny)) c.y=ny; }
+      c.ang=Math.atan2(sy,sx); c.chasing=true;
+    } else {
+      c.wt=(c.wt||0)-dt; if(c.wt<=0){ c.wa=rnd(0,6.283); c.wt=rnd(1.2,3); }
+      const nx=c.x+Math.cos(c.wa)*c.speed*0.35*dt, ny=c.y+Math.sin(c.wa)*c.speed*0.35*dt;
+      if(c.water){ if(inWater(nx,ny)){c.x=nx;c.y=ny;} else c.wt=0; }
+      else { if(canDrive(nx,ny)){c.x=nx;c.y=ny;} else c.wt=0; }
+      c.ang=c.wa; c.chasing=false;
+    }
+    if(d<34 && c.cd<=0) chaserBite(c);
+  }
   // truck blink
   if(game.truckBlink>0) game.truckBlink-=dt; else if(Math.random()<0.006) game.truckBlink=0.14;
 
@@ -906,8 +1108,91 @@ function drawParts(){
     if(p.type==='coin'){ ctx.globalAlpha=k; ctx.fillStyle='#ffcf33'; ctx.strokeStyle='#e0a400'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(p.x,p.y,5,0,6.3); ctx.fill(); ctx.stroke(); ctx.fillStyle='#e0a400'; ctx.font='700 7px Fredoka, sans-serif'; ctx.textAlign='center'; ctx.fillText('kr',p.x,p.y+2.5); }
     else if(p.type==='conf'){ ctx.save(); ctx.globalAlpha=k; ctx.translate(p.x,p.y); ctx.rotate(p.rot+p.vr*p.t); ctx.fillStyle=p.col; ctx.fillRect(-3,-4,6,8); ctx.restore(); }
     else if(p.type==='smoke'){ ctx.globalAlpha=k*0.4; ctx.fillStyle='#c3ccc6'; ctx.beginPath(); ctx.arc(p.x,p.y,4+p.t*11,0,6.3); ctx.fill(); }
+    else if(p.type==='splash'){ ctx.globalAlpha=k; ctx.fillStyle='#8fd6f2'; ctx.beginPath(); ctx.arc(p.x,p.y,3.5,0,6.3); ctx.fill(); }
+    else if(p.type==='snowp'){ ctx.globalAlpha=k; ctx.fillStyle='#ffffff'; ctx.beginPath(); ctx.arc(p.x,p.y,3,0,6.3); ctx.fill(); }
   }
   ctx.globalAlpha=1;
+}
+function drawChaser(c){
+  const x=c.x,y=c.y;
+  ctx.fillStyle='rgba(0,0,0,.14)'; ctx.beginPath(); ctx.ellipse(x,y+10,16,7,0,0,6.3); ctx.fill();
+  ctx.save(); ctx.translate(x,y); ctx.rotate(c.ang||0);
+  if(c.type==='shark'){
+    // body
+    ctx.fillStyle='#5b6b78'; ctx.beginPath(); ctx.ellipse(0,0,22,10,0,0,6.3); ctx.fill();
+    ctx.fillStyle='#46545f'; ctx.beginPath(); ctx.moveTo(-18,0); ctx.lineTo(-30,-9); ctx.lineTo(-30,9); ctx.closePath(); ctx.fill(); // tail
+    ctx.fillStyle='#46545f'; ctx.beginPath(); ctx.moveTo(-2,-9); ctx.lineTo(4,-24); ctx.lineTo(10,-9); ctx.closePath(); ctx.fill(); // dorsal fin
+    ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(16,-3,2,0,6.3); ctx.fill();
+    ctx.strokeStyle='#fff'; ctx.lineWidth=1.4; ctx.beginPath(); ctx.moveTo(14,5); ctx.lineTo(21,5); ctx.stroke(); // teeth line
+  } else { // polar bear (top-down)
+    ctx.fillStyle='#f2f7fb'; ctx.beginPath(); ctx.ellipse(0,0,19,14,0,0,6.3); ctx.fill();
+    ctx.fillStyle='#e6eef5'; ctx.beginPath(); ctx.arc(16,0,10,0,6.3); ctx.fill(); // head
+    ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(22,-7,3.2,0,6.3); ctx.fill(); ctx.beginPath(); ctx.arc(22,7,3.2,0,6.3); ctx.fill(); // ears
+    ctx.fillStyle='#2b3038'; ctx.beginPath(); ctx.arc(24,-3,1.6,0,6.3); ctx.fill(); ctx.beginPath(); ctx.arc(24,3,1.6,0,6.3); ctx.fill(); // eyes
+    ctx.fillStyle='#8a94a0'; ctx.beginPath(); ctx.arc(26,0,2.2,0,6.3); ctx.fill(); // snout
+  }
+  ctx.restore();
+  if(c.chasing){ ctx.fillStyle='#e2483a'; ctx.font='700 14px Fredoka, sans-serif'; ctx.textAlign='center'; ctx.fillText('!', x, y-20+Math.sin(game.time*8)*2); }
+}
+function drawPalm(d){
+  ctx.fillStyle='rgba(0,0,0,.14)'; ctx.beginPath(); ctx.ellipse(d.x+4,d.y+6,d.r*0.8,d.r*0.34,0,0,6.3); ctx.fill();
+  ctx.strokeStyle='#a9733f'; ctx.lineWidth=5; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(d.x,d.y+6); ctx.quadraticCurveTo(d.x-5,d.y-d.r*0.6,d.x+3,d.y-d.r); ctx.stroke();
+  ctx.fillStyle='#3fae54'; for(let a=0;a<6;a++){ ctx.save(); ctx.translate(d.x+3,d.y-d.r); ctx.rotate(a*Math.PI/3+0.2); ctx.beginPath(); ctx.ellipse(d.r*0.52,0,d.r*0.6,5,0,0,6.3); ctx.fill(); ctx.restore(); }
+  ctx.fillStyle='#6b3f1e'; ctx.beginPath(); ctx.arc(d.x,d.y-d.r+4,1.8,0,6.3); ctx.fill(); ctx.beginPath(); ctx.arc(d.x+6,d.y-d.r+5,1.8,0,6.3); ctx.fill();
+}
+function drawPine(d){
+  ctx.fillStyle='rgba(0,0,0,.14)'; ctx.beginPath(); ctx.ellipse(d.x+3,d.y+d.r*0.6,d.r*0.7,d.r*0.3,0,0,6.3); ctx.fill();
+  ctx.fillStyle='#8a5a33'; ctx.fillRect(d.x-2,d.y+d.r*0.2,4,d.r*0.5);
+  for(let l=0;l<3;l++){ const yy=d.y-d.r+l*d.r*0.5, ww=d.r*(0.5+l*0.28);
+    ctx.fillStyle='#2f7d46'; ctx.beginPath(); ctx.moveTo(d.x,yy); ctx.lineTo(d.x+ww,yy+d.r*0.55); ctx.lineTo(d.x-ww,yy+d.r*0.55); ctx.closePath(); ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,.8)'; ctx.beginPath(); ctx.moveTo(d.x,yy); ctx.lineTo(d.x+ww*0.4,yy+d.r*0.2); ctx.lineTo(d.x-ww*0.4,yy+d.r*0.2); ctx.closePath(); ctx.fill(); }
+}
+function drawPenguin(d){
+  const x=d.x,y=d.y, bob=Math.sin(game.time*3+d.x)*1.5;
+  ctx.fillStyle='rgba(0,0,0,.14)'; ctx.beginPath(); ctx.ellipse(x,y+12,8,3,0,0,6.3); ctx.fill();
+  ctx.fillStyle='#2b3038'; ctx.beginPath(); ctx.ellipse(x,y+bob,8,11,0,0,6.3); ctx.fill();
+  ctx.fillStyle='#fff'; ctx.beginPath(); ctx.ellipse(x,y+2+bob,5,8,0,0,6.3); ctx.fill();
+  ctx.fillStyle='#2b3038'; ctx.beginPath(); ctx.arc(x-2.5,y-4+bob,1.3,0,6.3); ctx.fill(); ctx.beginPath(); ctx.arc(x+2.5,y-4+bob,1.3,0,6.3); ctx.fill();
+  ctx.fillStyle='#ff8f33'; ctx.beginPath(); ctx.moveTo(x-2,y-1+bob); ctx.lineTo(x+2,y-1+bob); ctx.lineTo(x,y+2+bob); ctx.closePath(); ctx.fill();
+  ctx.fillRect(x-4,y+10+bob,3,2); ctx.fillRect(x+1,y+10+bob,3,2);
+}
+function drawSnowman(d){
+  const x=d.x,y=d.y;
+  ctx.fillStyle='rgba(0,0,0,.14)'; ctx.beginPath(); ctx.ellipse(x,y+12,9,3,0,0,6.3); ctx.fill();
+  ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(x,y+6,8,0,6.3); ctx.fill(); ctx.beginPath(); ctx.arc(x,y-4,6,0,6.3); ctx.fill();
+  ctx.fillStyle='#2b3038'; ctx.beginPath(); ctx.arc(x-2,y-5,1,0,6.3); ctx.fill(); ctx.beginPath(); ctx.arc(x+2,y-5,1,0,6.3); ctx.fill();
+  ctx.fillStyle='#ff8f33'; ctx.beginPath(); ctx.moveTo(x,y-3); ctx.lineTo(x+6,y-2); ctx.lineTo(x,y-1); ctx.closePath(); ctx.fill();
+  ctx.fillStyle='#2b3038'; ctx.fillRect(x-6,y-12,12,3); ctx.fillRect(x-3,y-18,6,6);
+}
+function drawLamp(d){
+  const g=ctx.createRadialGradient(d.x,d.y+66,4,d.x,d.y+66,92);
+  g.addColorStop(0,'rgba(255,228,150,.3)'); g.addColorStop(1,'rgba(255,228,150,0)');
+  ctx.fillStyle=g; ctx.beginPath(); ctx.arc(d.x,d.y+66,92,0,6.3); ctx.fill();
+  ctx.strokeStyle='#3a3a52'; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(d.x,d.y); ctx.lineTo(d.x,d.y+58); ctx.stroke();
+  ctx.fillStyle='rgba(255,228,150,.5)'; ctx.beginPath(); ctx.arc(d.x,d.y,10,0,6.3); ctx.fill();
+  ctx.fillStyle='#ffe59a'; ctx.beginPath(); ctx.arc(d.x,d.y,5,0,6.3); ctx.fill();
+}
+function drawHeadlights(t){
+  ctx.save(); ctx.translate(t.x,t.y); ctx.rotate(t.ang);
+  const g=ctx.createLinearGradient(20,0,150,0); g.addColorStop(0,'rgba(255,245,200,.32)'); g.addColorStop(1,'rgba(255,245,200,0)');
+  ctx.fillStyle=g; ctx.beginPath(); ctx.moveTo(22,-7); ctx.lineTo(155,-58); ctx.lineTo(155,58); ctx.lineTo(22,7); ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+function drawIgloo(o){
+  const cx=o.x+o.w/2, by=o.y+o.h, rx=o.w*0.5, ry=o.h;
+  ctx.fillStyle='rgba(0,0,0,.14)'; ctx.beginPath(); ctx.ellipse(cx+4,by,rx*1.05,ry*0.26,0,0,6.3); ctx.fill();
+  ctx.fillStyle='#fdffff'; ctx.beginPath(); ctx.ellipse(cx,by,rx,ry,0,Math.PI,Math.PI*2); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle='#d4e4f0'; ctx.lineWidth=1.6;
+  ctx.beginPath(); ctx.ellipse(cx,by,rx*0.66,ry*0.66,0,Math.PI,Math.PI*2); ctx.stroke();
+  for(let i=0;i<5;i++){ const a=Math.PI + (i+0.5)/5*Math.PI; ctx.beginPath(); ctx.moveTo(cx+Math.cos(a)*rx, by+Math.sin(a)*ry); ctx.lineTo(cx+Math.cos(a)*rx*0.66, by+Math.sin(a)*ry*0.66); ctx.stroke(); }
+  ctx.fillStyle='#bcd3e6'; ctx.beginPath(); ctx.ellipse(cx,by,rx*0.2,ry*0.42,0,Math.PI,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#8fb0cc'; ctx.beginPath(); ctx.ellipse(cx,by,rx*0.13,ry*0.3,0,Math.PI,Math.PI*2); ctx.fill();
+}
+function drawNeonBld(o){
+  ctx.fillStyle='#241f3e'; roundRect(o.x,o.y,o.w,o.h,6); ctx.fill();
+  for(let wy=o.y+12; wy<o.y+o.h-10; wy+=22){ for(let wx=o.x+10; wx<o.x+o.w-12; wx+=20){ ctx.fillStyle = (((wx+wy)|0)%3)? 'rgba(255,230,120,.7)':'rgba(120,230,255,.55)'; ctx.fillRect(wx,wy,9,12); } }
+  ctx.save(); ctx.shadowColor=o.neon; ctx.shadowBlur=12; ctx.strokeStyle=o.neon; ctx.lineWidth=2.5; roundRect(o.x+2,o.y+2,o.w-4,o.h-4,5); ctx.stroke();
+  ctx.fillStyle=o.neon; roundRect(o.x+o.w*0.22,o.y-6,o.w*0.56,6,3); ctx.fill(); ctx.restore();
 }
 function drawClouds(){
   for(const c of game.clouds){ ctx.globalAlpha=c.a; ctx.fillStyle='#ffffff';
@@ -966,8 +1251,22 @@ function draw(){
     if(d.t==='tuft'){ ctx.strokeStyle='#5aa83f'; ctx.lineWidth=2; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(d.x,d.y); ctx.lineTo(d.x-3,d.y-6); ctx.moveTo(d.x,d.y); ctx.lineTo(d.x,d.y-8); ctx.moveTo(d.x,d.y); ctx.lineTo(d.x+3,d.y-6); ctx.stroke(); }
     else if(d.t==='flower'){ ctx.strokeStyle='#4e9a3a'; ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(d.x,d.y); ctx.lineTo(d.x,d.y-6); ctx.stroke(); ctx.fillStyle=d.c; for(let a=0;a<6.28;a+=1.25){ ctx.beginPath(); ctx.arc(d.x+Math.cos(a)*2.6,d.y-6+Math.sin(a)*2.6,1.8,0,6.3); ctx.fill(); } ctx.fillStyle='#ffd23f'; ctx.beginPath(); ctx.arc(d.x,d.y-6,1.5,0,6.3); ctx.fill(); }
     else if(d.t==='tree'){ ctx.fillStyle='rgba(0,0,0,.14)'; ctx.beginPath(); ctx.ellipse(d.x+4,d.y+d.r*0.7,d.r*0.9,d.r*0.5,0,0,6.3); ctx.fill(); ctx.fillStyle='#8a5a33'; ctx.fillRect(d.x-2,d.y,4,d.r*0.7); ctx.fillStyle='#4e9a3e'; ctx.beginPath(); ctx.arc(d.x,d.y,d.r,0,6.3); ctx.fill(); ctx.fillStyle='#63b352'; ctx.beginPath(); ctx.arc(d.x-d.r*0.3,d.y-d.r*0.3,d.r*0.62,0,6.3); ctx.fill(); ctx.fillStyle='#78c468'; ctx.beginPath(); ctx.arc(d.x+d.r*0.25,d.y-d.r*0.1,d.r*0.4,0,6.3); ctx.fill(); } }
-  // buildings
+  // themed decor (palms, pines, penguins, lamps, shells, sparkles…)
+  for(const d of R.decos){
+    if(d.t==='palm') drawPalm(d);
+    else if(d.t==='pine') drawPine(d);
+    else if(d.t==='penguin') drawPenguin(d);
+    else if(d.t==='snowman') drawSnowman(d);
+    else if(d.t==='lamp') drawLamp(d);
+    else if(d.t==='shell'){ ctx.fillStyle=d.c; ctx.beginPath(); ctx.arc(d.x,d.y,4,Math.PI,0); ctx.closePath(); ctx.fill(); ctx.strokeStyle='rgba(0,0,0,.12)'; ctx.lineWidth=1; for(let a=-1;a<=1.01;a+=0.5){ ctx.beginPath(); ctx.moveTo(d.x,d.y); ctx.lineTo(d.x+Math.sin(a)*4,d.y-Math.abs(Math.cos(a))*4); ctx.stroke(); } }
+    else if(d.t==='starfish'){ ctx.save(); ctx.translate(d.x,d.y); ctx.fillStyle=d.c; for(let a=0;a<5;a++){ ctx.rotate(Math.PI*2/5); ctx.beginPath(); ctx.moveTo(0,-6); ctx.lineTo(2.2,-1); ctx.lineTo(-2.2,-1); ctx.closePath(); ctx.fill(); } ctx.fillStyle='rgba(255,255,255,.4)'; ctx.beginPath(); ctx.arc(0,0,1.6,0,6.3); ctx.fill(); ctx.restore(); }
+    else if(d.t==='sparkle'){ const s=1.5+Math.sin(game.time*4+d.x)*0.7; ctx.fillStyle='rgba(255,255,255,.85)'; ctx.beginPath(); ctx.arc(d.x,d.y,s,0,6.3); ctx.fill(); }
+    else if(d.t==='ice'){ ctx.fillStyle='rgba(255,255,255,.3)'; ctx.beginPath(); ctx.ellipse(d.x,d.y,8,4,0.5,0,6.3); ctx.fill(); }
+  }
+  // obstacles: houses, igloos, neon buildings
   for(const o of R.obstacles){
+    if(o.kind==='igloo'){ drawIgloo(o); continue; }
+    if(o.kind==='neon'){ drawNeonBld(o); continue; }
     // shadow + wall
     ctx.fillStyle='rgba(0,0,0,.15)'; roundRect(o.x+5,o.y+8,o.w,o.h,9); ctx.fill();
     ctx.fillStyle=o.c||'#eedfc2'; roundRect(o.x,o.y,o.w,o.h,9); ctx.fill();
@@ -996,6 +1295,10 @@ function draw(){
     ctx.fillStyle='#fff'; ctx.fillText(txt, b.x, b.y-42);
   }
 
+  // chasers (sharks / polar bears)
+  for(const c of R.chasers) drawChaser(c);
+  // night headlights
+  if(R.night) drawHeadlights(t);
   // truck
   drawTruck(t);
   if(game.offroad){ ctx.font='700 12px Fredoka, sans-serif'; ctx.textAlign='center'; const txt='⚠️ Utanför vägen'; const lw=ctx.measureText(txt).width+16; ctx.fillStyle='rgba(226,72,58,.92)'; roundRect(t.x-lw/2, t.y-48, lw, 20, 10); ctx.fill(); ctx.fillStyle='#fff'; ctx.fillText(txt, t.x, t.y-34); }
@@ -1075,30 +1378,42 @@ function drawDevProp(b,x,y){
 function drawTruck(t){
   const sp=Math.hypot(t.vx,t.vy);
   const bob=Math.sin(game.time*13)*(sp>20?1.2:0.3);
+  const C = TRUCK_COLORS[save.cosmetics.color] || TRUCK_COLORS.green;
+  const tl = save.cosmetics.tires||0, tt = 6 + tl*3; // tire thickness
   ctx.save(); ctx.translate(t.x, t.y+bob); ctx.rotate(t.ang);
   // shadow
-  ctx.fillStyle='rgba(0,0,0,.22)'; roundRect(-25,-15,52,31,10); ctx.fill();
-  // wheels
-  ctx.fillStyle='#15241f'; roundRect(-21,-18,9,6,3); ctx.fill(); roundRect(-21,12,9,6,3); ctx.fill(); roundRect(9,-18,9,6,3); ctx.fill(); roundRect(9,12,9,6,3); ctx.fill();
+  ctx.fillStyle='rgba(0,0,0,.22)'; roundRect(-26,-16-tl*2,54,34+tl*4,11); ctx.fill();
+  // wheels (wider / monster with tire upgrade)
+  ctx.fillStyle='#15241f';
+  roundRect(-22,-15-tt,11,tt,3); ctx.fill(); roundRect(-22,15,11,tt,3); ctx.fill();
+  roundRect(9,-15-tt,11,tt,3); ctx.fill(); roundRect(9,15,11,tt,3); ctx.fill();
+  if(tl>0){ ctx.fillStyle='#3a4049'; roundRect(-20,-13-tt,7,tt-3,2); ctx.fill(); roundRect(-20,18,7,tt-3,2); ctx.fill(); roundRect(11,-13-tt,7,tt-3,2); ctx.fill(); roundRect(11,18,7,tt-3,2); ctx.fill(); }
   // hopper (back)
-  ctx.fillStyle='#1f9d47'; roundRect(-25,-14,26,28,7); ctx.fill();
-  ctx.fillStyle='#17812f'; roundRect(-25,-14,9,28,6); ctx.fill();
+  ctx.fillStyle=C.dark; roundRect(-25,-14,26,28,7); ctx.fill();
+  ctx.fillStyle='rgba(0,0,0,.18)'; roundRect(-25,-14,9,28,6); ctx.fill();
   // body
-  ctx.fillStyle='#2fbf55'; roundRect(-3,-13,22,26,7); ctx.fill();
+  ctx.fillStyle=C.body; roundRect(-3,-13,22,26,7); ctx.fill();
   ctx.fillStyle='rgba(255,255,255,.16)'; roundRect(-3,-13,22,9,7); ctx.fill();
   // warning stripe
   ctx.fillStyle='#ffd23f'; roundRect(-3,-14,5,28,2); ctx.fill();
   ctx.fillStyle='rgba(255,255,255,.9)'; roundRect(-22,-2,15,4,2); ctx.fill();
   // cab
-  ctx.fillStyle='#39d166'; roundRect(13,-12,14,24,7); ctx.fill();
+  ctx.fillStyle=C.cab; roundRect(13,-12,14,24,7); ctx.fill();
   // windshield
   ctx.fillStyle='#bfe9ff'; roundRect(19,-9,8,18,3); ctx.fill();
-  // eyes looking forward
+  // eyes
   const blink=game.truckBlink>0;
   if(blink){ ctx.fillStyle='#fff'; ctx.fillRect(22,-6,5,1.7); ctx.fillRect(22,4.3,5,1.7); }
   else{ ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(24,-4,3.2,0,6.3); ctx.fill(); ctx.beginPath(); ctx.arc(24,5,3.2,0,6.3); ctx.fill(); ctx.fillStyle='#222b27'; ctx.beginPath(); ctx.arc(25.4,-4,1.5,0,6.3); ctx.fill(); ctx.beginPath(); ctx.arc(25.4,5,1.5,0,6.3); ctx.fill(); }
-  // beacon blink
-  if(((game.time*3)|0)%2===0){ ctx.fillStyle='#ffd83d'; roundRect(3,-15,6,4,2); ctx.fill(); }
+  // flashing beacon lights — base one + any you bought
+  const nL = 1 + (save.cosmetics.lights||0);
+  const lcols=['#ffd83d','#36f3ff','#ff4d6a','#39ff88'];
+  for(let i=0;i<nL;i++){
+    const on=((game.time*5|0)+i)%2===0;
+    const lx=7 - i*8, col=lcols[i%lcols.length];
+    if(on){ ctx.fillStyle=col+'99'; ctx.beginPath(); ctx.arc(lx,0,8,0,6.3); ctx.fill(); }
+    ctx.fillStyle = on?col:'#5a5a52'; roundRect(lx-3,-3,6,6,2); ctx.fill();
+  }
   ctx.restore();
 }
 
@@ -1134,17 +1449,14 @@ function frame(ts){
 // =========================================================================
 //  Garage UI
 // =========================================================================
-const ROUTE_META = {
-  stad:{emoji:'🏙️',bg:'#dbe9f7',name:'Stad',desc:'Rutnät av gator, hög kärltäthet'},
-  land:{emoji:'🌾',bg:'#eef3d6',name:'Landsbygd',desc:'Långa vägar, åkrar och en bro'},
-  oar :{emoji:'🏝️',bg:'#d4ecf5',name:'Skärgård & broar',desc:'Öar förbundna med broar över vatten'},
-};
+const ROUTE_META = WORLDS;
 function buildGarage(){
   updateHud();
   document.getElementById('hudRouteK').textContent='Körtur';
+  renderWallet(); renderPlayer(); renderCosmetics(); renderScores();
   // routes
   const rl=document.getElementById('routeList'); rl.innerHTML='';
-  ['stad','land','oar'].forEach(id=>{
+  WORLD_ORDER.forEach(id=>{
     const m=ROUTE_META[id], unlocked=save.unlocked[id];
     const row=document.createElement('button'); row.className='route-row'+(id===game.routeId&&unlocked?' sel':'')+(unlocked?'':' locked');
     let right;
@@ -1181,11 +1493,71 @@ function buildGarage(){
   });
   // start button label
   document.getElementById('startBtn').innerHTML='▶ Starta passet i '+ROUTE_META[game.routeId].name;
-  document.getElementById('garageFoot').textContent='Dag '+save.day+' · Kassa '+Math.round(save.money)+' kr'+(save.best>0?' · Rekord '+save.best+' kr 🏅':'')+' · byggt för mobil 📱';
+  document.getElementById('garageFoot').textContent=(save.name?save.name+' · ':'')+'Dag '+save.day+(save.best>0?' · Rekord '+save.best+' kr 🏅':'')+' · byggt för mobil 📱';
 }
 
+// ---------------- garage: wallet, player, cosmetics, scores ----------------
+function esc(s){ return String(s).replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])); }
+function uiClick(){ beep(540,0.04,'square',0.05); }
+function cashSound(){ beep(880,0.08); setTimeout(()=>beep(1180,0.09),70); setTimeout(()=>beep(1560,0.08),150); }
+function renderWallet(){ const el=document.getElementById('wallet'); if(el) el.textContent=Math.round(save.money)+' kr'; }
+function renderPlayer(){ const el=document.getElementById('playerName'); if(el) el.textContent=save.name||'Spelare'; }
+function renderScores(){
+  const el=document.getElementById('scoreList'); if(!el) return; el.innerHTML='';
+  const top=(save.scores||[]).slice().sort((a,b)=>b.score-a.score).slice(0,8);
+  if(!top.length){ el.innerHTML='<div class="score-empty">Inga resultat än — kör ett pass så dyker du upp här!</div>'; return; }
+  top.forEach((s,i)=>{ const w=WORLDS[s.world]; const r=document.createElement('div'); r.className='score-row';
+    r.innerHTML=`<span class="rank">${i+1}</span><span class="nm">${esc(s.name||'—')} ${w?w.emoji:''}</span><span class="sc">${s.score} kr</span>`;
+    el.appendChild(r); });
+}
+function renderCosmetics(){
+  const el=document.getElementById('cosmetics'); if(!el) return; el.innerHTML='';
+  // colours
+  const crow=document.createElement('div'); crow.className='cos-row';
+  crow.style.flexDirection='column'; crow.style.alignItems='stretch';
+  crow.innerHTML='<div style="margin-bottom:4px"><b style="font-family:Fredoka;font-size:17px">Färg</b></div>';
+  const sw=document.createElement('div'); sw.className='cos-swatches';
+  Object.keys(TRUCK_COLORS).forEach(key=>{ const c=TRUCK_COLORS[key]; const owned=c.cost===0||save.cosmetics.ownColors.includes(key);
+    const b=document.createElement('button'); b.className='swatch'+(save.cosmetics.color===key?' sel':'')+(owned?'':' locked'); b.style.background=c.body; b.title=c.name;
+    if(!owned) b.innerHTML=`<span class="price">${c.cost}</span>`;
+    b.onclick=()=>{
+      if(owned){ save.cosmetics.color=key; persist(); uiClick(); renderCosmetics(); }
+      else if(save.money>=c.cost){ save.money-=c.cost; save.cosmetics.ownColors.push(key); save.cosmetics.color=key; persist(); cashSound(); buildGarage(); }
+      else toast('Du behöver '+c.cost+' kr','bad');
+    };
+    sw.appendChild(b);
+  });
+  crow.appendChild(sw); el.appendChild(crow);
+  // tires
+  const tlvl=save.cosmetics.tires||0, tnext=tlvl<TIRES.length-1?TIRES[tlvl+1]:null;
+  const trow=document.createElement('div'); trow.className='cos-row';
+  trow.innerHTML=`<div class="uic">🛞</div><div class="um" style="flex:1;min-width:0"><b>${TIRES[tlvl].name}</b><span style="font-size:13px;color:var(--ink-soft)">${tnext?('Uppgradera till '+tnext.name):'Största däcken monterade'}</span></div>`;
+  const tb=document.createElement('button');
+  if(tnext){ tb.className='buybtn'; tb.textContent=tnext.cost+' kr'; if(save.money<tnext.cost) tb.disabled=true; tb.onclick=()=>{ if(save.money>=tnext.cost){ save.money-=tnext.cost; save.cosmetics.tires=tlvl+1; persist(); cashSound(); buildGarage(); } }; }
+  else { tb.className='buybtn maxed'; tb.disabled=true; tb.textContent='MAX'; }
+  trow.appendChild(tb); el.appendChild(trow);
+  // lights
+  const ll=save.cosmetics.lights||0, lcost=ll<3?LIGHT_COST[ll]:null;
+  const lrow=document.createElement('div'); lrow.className='cos-row';
+  lrow.innerHTML=`<div class="uic">🚨</div><div class="um" style="flex:1;min-width:0"><b>Blinklysen (${ll+1})</b><span style="font-size:13px;color:var(--ink-soft)">${lcost!=null?'Lägg till ett extra varningsljus':'Fullt med ljus på taket!'}</span></div>`;
+  const lb=document.createElement('button');
+  if(lcost!=null){ lb.className='buybtn'; lb.textContent=lcost+' kr'; if(save.money<lcost) lb.disabled=true; lb.onclick=()=>{ if(save.money>=lcost){ save.money-=lcost; save.cosmetics.lights=ll+1; persist(); cashSound(); buildGarage(); } }; }
+  else { lb.className='buybtn maxed'; lb.disabled=true; lb.textContent='MAX'; }
+  lrow.appendChild(lb); el.appendChild(lrow);
+}
+// nickname modal
+const nickOv=document.getElementById('nick'), nickInput=document.getElementById('nickInput');
+function openNick(then){ nickInput.value=save.name||''; nickOv._then=then||null; nickOv.classList.add('show'); setTimeout(()=>{ try{nickInput.focus();}catch(e){} },60); }
+function closeNick(){ nickOv.classList.remove('show'); }
+document.getElementById('playerChip').onclick=()=>{ uiClick(); openNick(null); };
+document.getElementById('nickGo').onclick=()=>{ const v=(nickInput.value||'').trim().slice(0,14)||'Spelare'; save.name=v; persist(); renderPlayer(); const then=nickOv._then; closeNick(); uiClick(); if(then) then(); };
+nickInput.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); document.getElementById('nickGo').click(); } });
+
 // ---------------- buttons ----------------
-document.getElementById('startBtn').onclick=()=>{ if(actx&&actx.state==='suspended')actx.resume(); startDay(); };
+document.getElementById('startBtn').onclick=()=>{
+  if(actx&&actx.state==='suspended')actx.resume();
+  if(!save.name){ openNick(()=>startDay()); } else startDay();
+};
 
 function openPause(){
   if(game.screen!=='play') return;
