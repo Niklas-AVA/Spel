@@ -1,17 +1,13 @@
-<!doctype html>
-<html lang="sv">
-<head>
-<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Sorteringsfall</title>
+<title>Fack fall</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap">
 <style>
-  /* Sorteringsfall — en sopsorterings-Tetris. Fallande bitar av riktiga föremål; styr varje ruta till
+  /* Fack fall — en sopsorterings-Tetris. Fallande bitar av riktiga föremål; styr varje ruta till
      rätt fack-lane. Rätt sort = poof + poäng, fel sort = kvarliggande skräp som staplas. Full-bleed canvas
      + absolut-placerad HUD + overlay-menyer, samma visuella värld som Sopbilspasset / Fack in. */
   :root{
@@ -139,8 +135,7 @@
   .praise h3{color:var(--green-d)}
   [hidden]{display:none!important}
 </style>
-</head>
-<body>
+
 <div id="app">
   <canvas id="c"></canvas>
 
@@ -166,7 +161,7 @@
   <div class="overlay" id="startOv">
     <div class="card">
       <div class="tag">Sopsortering · faller ovanifrån</div>
-      <h1>Sorteringsfall</h1>
+      <h1>Fack fall</h1>
       <p>Bitarna faller — styr varje föremål till <b>rätt fack</b> längst ner. Lanen är färgade så du ser var allt hör hemma.</p>
       <ul class="how">
         <li><span class="ic">🎯</span><span>Hamnar ett föremål i <b>rätt fack</b> försvinner det och ger poäng.</span></li>
@@ -661,5 +656,3 @@
   requestAnimationFrame(frame);
 })();
 </script>
-</body>
-</html>
