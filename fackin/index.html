@@ -187,7 +187,7 @@
   .sortcard{background:var(--panel);width:100%;max-width:560px;margin:0 auto;border-radius:24px 24px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.35);padding:16px 14px calc(18px + env(safe-area-inset-bottom,0px));max-height:92%;overflow:auto;animation:pop .2s ease}
   @keyframes pop{from{transform:translateY(20px)}to{transform:none}}
   .item-hero{display:flex;align-items:center;gap:14px;margin:2px 4px 14px}
-  .item-hero .ie{width:64px;height:64px;border-radius:16px;background:var(--panel-2);display:grid;place-items:center;font-size:36px;flex:0 0 auto;overflow:hidden}
+  .item-hero .ie{width:64px;height:64px;border-radius:16px;background:#fff;display:grid;place-items:center;font-size:36px;flex:0 0 auto;overflow:hidden}
   .item-hero .ie img{width:100%;height:100%;object-fit:cover}
   .item-hero h3{margin:0;font-size:22px;font-family:Fredoka}
   .item-hero p{margin:3px 0 0;font-size:14px;color:var(--ink-soft)}
@@ -1454,7 +1454,7 @@ const ICONS = (function(){
   return {
     has:function(k){ return !!MAP[k]; },
     draw:function(c,x,y,s,k){ const fn=MAP[k]; if(!fn) return false;
-      c.save(); c.translate(x,y); const u=s/56; c.scale(u,u); c.lineJoin='round'; c.lineCap='round';
+      c.save(); c.translate(x,y); const u=s/56; c.scale(u,u); c.lineJoin='round'; c.lineCap='round'; c.shadowColor='rgba(0,0,0,.28)'; c.shadowBlur=2.4; c.shadowOffsetY=1.2;
       try{ fn(c); }catch(e){ c.restore(); return false; } c.restore(); return true; }
   };
 })();
