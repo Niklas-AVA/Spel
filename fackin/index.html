@@ -83,6 +83,9 @@
   .brand .logo img{width:100%;height:100%;object-fit:contain;padding:6px}
   .brand h1{margin:0;font-size:30px;font-weight:700;letter-spacing:-.01em}
   .brand p{margin:3px 0 0;font-size:14.5px;color:#bfe7cf}
+  .logo-banner{display:none;background:#fff;border-radius:18px;box-shadow:var(--shadow);padding:16px 18px;margin:2px 2px 14px;text-align:center}
+  .logo-banner.show{display:block}
+  .logo-banner img{max-width:min(80%,300px);height:auto;display:block;margin:0 auto}
 
   .card{background:var(--panel);border-radius:20px;padding:18px;box-shadow:var(--shadow);margin-bottom:15px}
   .card h2{margin:0 0 5px;font-size:21px}
@@ -254,9 +257,12 @@
   <!-- BASE / MENU -->
   <div class="overlay" id="base">
     <div class="sheet">
+      <div class="logo-banner" id="logoBanner">
+        <!-- Kretslopp Sydost-loggan (fackin/logo.svg eller logo.png) läggs in här av loadBrandLogo. -->
+      </div>
       <div class="brand">
         <div class="logo" id="brandLogo">
-          <!-- Platshållare för Kretslopp Sydost-loggan. Lägg en logo.svg eller logo.png i mappen sortera/ så byts den ut automatiskt. -->
+          <!-- Liten spelemblem-platshållare. -->
           <svg width="52" height="52" viewBox="0 0 52 52" fill="none" aria-label="Kretslopp Sydost (platshållare)">
             <circle cx="26" cy="26" r="24" fill="#e4f4e6"/>
             <g fill="#2fa84f">
@@ -1485,8 +1491,9 @@ document.getElementById('toBase').onclick=()=>{ game.screen='base'; document.get
 //  BRAND LOGO loader — swaps placeholder for official logo if present
 // =========================================================================
 function loadBrandLogo(){
-  const holder=document.getElementById('brandLogo'); if(!holder) return;
-  const tryLoad=(src,next)=>{ const img=new Image(); img.onload=()=>{ holder.innerHTML=''; img.alt='Kretslopp Sydost'; holder.appendChild(img); }; img.onerror=next||function(){}; img.src=src; };
+  const banner=document.getElementById('logoBanner'); if(!banner) return;
+  const show=(img)=>{ banner.innerHTML=''; img.alt='Kretslopp Sydost'; banner.appendChild(img); banner.classList.add('show'); };
+  const tryLoad=(src,next)=>{ const img=new Image(); img.onload=()=>show(img); img.onerror=next||function(){}; img.src=src; };
   tryLoad('logo.svg', ()=>tryLoad('logo.png', null));
 }
 
