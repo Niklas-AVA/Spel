@@ -200,6 +200,11 @@
   .fak .fn{font-size:10.5px;font-weight:600;color:var(--ink);line-height:1.12;font-family:Fredoka}
   .fak.correct{border-color:#2fa84f;outline:3px solid #7CFFA6;outline-offset:-1px;animation:rightpulse .5s ease}
   .fak.wrong{border-color:#e2483a;opacity:.5}
+  /* kärl-fack fyller sina rutor i rätt proportioner (som ett riktigt kärl) */
+  .karl .fak{height:100%;min-height:0;padding:0;gap:0;border:1px solid #c7ced2;border-radius:9px;overflow:hidden}
+  .karl .fak .symimg{flex:1 1 auto;min-height:0;width:100%;height:auto;aspect-ratio:auto;border-radius:0}
+  .karl .fak .emojibox{flex:1 1 auto;min-height:0;width:100%;aspect-ratio:auto;border-radius:0}
+  .karl .fak .fn{flex:0 0 auto;width:100%;background:#fff;padding:3px 2px;font-size:9.5px;font-weight:700;color:var(--ink)}
   @keyframes rightpulse{0%,100%{transform:scale(1)}40%{transform:scale(1.05)}}
   .sort-feedback{text-align:center;font-family:Fredoka;font-weight:700;font-size:16px;min-height:22px;margin:12px 4px 2px}
   .sort-feedback.good{color:var(--green-d)}
@@ -434,11 +439,12 @@ const FRAC = {
 };
 // Grupperna = de fysiska dit-platserna. Spelaren väljer rätt fraktion i rätt grupp.
 const GROUPS = [
-  // Ordning = fackens placering i kärlet (↖ ↗ / ↙ ↘), enligt Kretslopp Sydosts fyrfackskärl
-  {id:'k1',    label:'🟩 Fyrfackskärl 1',        keys:['mat','rest','fargat','ofargat'], cols:2},
-  {id:'k2',    label:'🟦 Fyrfackskärl 2',        keys:['plast','papper','tidning','metall'], cols:2},
-  {id:'elbox', label:'🔋 El-boxen',               keys:['ljuskalla','smael','batteri'], cols:3},
-  {id:'avc',   label:'♻️ Återvinningscentralen', keys:['avc'], cols:1},
+  // Ordning + storlek speglar Kretslopp Sydosts kärl: fyrfackskärlen har mindre
+  // övre fack och större nedre; el-boxen har ett bredare mittfack.
+  {id:'k1',    label:'🟩 Fyrfackskärl 1',        keys:['mat','rest','fargat','ofargat'], gridCss:'grid-template-columns:1fr 1fr;grid-template-rows:0.7fr 1fr;aspect-ratio:1/1.04'},
+  {id:'k2',    label:'🟦 Fyrfackskärl 2',        keys:['plast','papper','tidning','metall'], gridCss:'grid-template-columns:1fr 1fr;grid-template-rows:0.7fr 1fr;aspect-ratio:1/1.04'},
+  {id:'elbox', label:'🔋 El-boxen',               keys:['ljuskalla','smael','batteri'], gridCss:'grid-template-columns:1fr 1.35fr 1fr;aspect-ratio:300/116'},
+  {id:'avc',   label:'♻️ Återvinningscentralen', keys:['avc'], gridCss:'grid-template-columns:1fr;aspect-ratio:300/116'},
 ];
 
 // Varje sak: {n:namn, e:emoji, f:fraktion, hint:kort ledtråd, klur:true om kluring/special}
@@ -948,8 +954,8 @@ function openSort(it){
   const heroIcon = (it.img && it.img.ok) ? `<img src="${it.img.img.src}" alt="">` : d.e;
   let groupsHtml='';
   GROUPS.forEach(g=>{
-    const cols=g.cols||Math.min(4,g.keys.length);
-    groupsHtml += `<div class="karl-label">${g.label}</div><div class="karl"><div class="fak-grid" style="grid-template-columns:repeat(${cols},1fr)" data-g="${g.id}"></div></div>`;
+    const gcss=g.gridCss||`grid-template-columns:repeat(${g.cols||Math.min(4,g.keys.length)},1fr)`;
+    groupsHtml += `<div class="karl-label">${g.label}</div><div class="karl"><div class="fak-grid" style="${gcss}" data-g="${g.id}"></div></div>`;
   });
   card.innerHTML = `
     <div class="item-hero">
