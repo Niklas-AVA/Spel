@@ -1,0 +1,665 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>Sorteringsfall</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+  /* Sorteringsfall — en sopsorterings-Tetris. Fallande bitar av riktiga föremål; styr varje ruta till
+     rätt fack-lane. Rätt sort = poof + poäng, fel sort = kvarliggande skräp som staplas. Full-bleed canvas
+     + absolut-placerad HUD + overlay-menyer, samma visuella värld som Sopbilspasset / Fack in. */
+  :root{
+    --sky:#0e2219;
+    --panel:#ffffff;
+    --panel-2:#f1f6ef;
+    --ink:#15241f;
+    --ink-soft:#4d5f57;
+    --line:#dde6dd;
+    --green:#2fa84f;
+    --green-d:#1f7d3a;
+    --green-l:#e4f4e6;
+    --amber:#e8a62e;
+    --red:#e2483a;
+    --blue:#2f7fd1;
+    --shadow:0 10px 30px rgba(8,30,20,.28);
+    color-scheme: light;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{
+    background:var(--sky);color:var(--ink);
+    font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    overflow:hidden;-webkit-user-select:none;user-select:none;
+    -webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;
+    touch-action:none;overscroll-behavior:none;
+  }
+  button{touch-action:manipulation;font-family:inherit}
+  #app{position:relative;height:100%;width:100%;
+    padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px);overflow:hidden;}
+  canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+  h1,h2,h3,.disp{font-family:Fredoka,Inter,sans-serif}
+
+  /* ---------- HUD ---------- */
+  #hud{position:absolute;inset:0;pointer-events:none;
+    padding-top:env(safe-area-inset-top,0px);}
+  .topbar{
+    position:absolute;top:calc(10px + env(safe-area-inset-top,0px));left:12px;right:12px;
+    display:flex;gap:8px;align-items:stretch;justify-content:space-between;pointer-events:none;
+  }
+  .stat{
+    background:rgba(255,255,255,.96);border-radius:14px;padding:7px 13px;
+    box-shadow:var(--shadow);display:flex;flex-direction:column;gap:1px;min-width:0;
+  }
+  .stat .k{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);font-weight:700}
+  .stat .v{font-size:20px;font-weight:700;font-family:Fredoka,Inter,sans-serif;line-height:1;
+    font-variant-numeric:tabular-nums}
+  .statgroup{display:flex;gap:8px}
+  .iconbtn{
+    pointer-events:auto;background:rgba(255,255,255,.96);border:none;border-radius:14px;
+    width:46px;height:46px;box-shadow:var(--shadow);font-size:20px;color:var(--ink);cursor:pointer;
+    display:grid;place-items:center;
+  }
+  .iconbtn:active{transform:scale(.94)}
+
+  /* feedback-toast */
+  #toast{
+    position:absolute;left:50%;top:calc(66px + env(safe-area-inset-top,0px));transform:translateX(-50%) translateY(-8px);
+    background:var(--green-d);color:#fff;font-weight:700;font-size:15px;
+    padding:9px 16px;border-radius:999px;box-shadow:var(--shadow);opacity:0;
+    transition:opacity .18s ease, transform .18s ease;max-width:90vw;text-align:center;
+    pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  #toast.bad{background:var(--red)}
+  #toast.good{background:var(--green-d)}
+  #toast.info{background:#2a4a3c}
+
+  /* ---------- kontroller ---------- */
+  #controls{
+    position:absolute;left:0;right:0;bottom:0;
+    padding:10px 12px calc(12px + env(safe-area-inset-bottom,0px));
+    display:flex;gap:10px;justify-content:center;align-items:stretch;pointer-events:none;
+  }
+  .ctl{
+    pointer-events:auto;flex:1;max-width:120px;height:62px;border:none;border-radius:18px;
+    background:rgba(255,255,255,.96);box-shadow:var(--shadow);color:var(--ink);
+    font-size:26px;font-weight:700;cursor:pointer;display:grid;place-items:center;
+  }
+  .ctl .lab{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);margin-top:1px}
+  .ctl span.big{line-height:1}
+  .ctl:active{transform:scale(.95);background:#eef6ee}
+  .ctl.drop{background:var(--green);color:#fff}
+  .ctl.drop .lab{color:rgba(255,255,255,.85)}
+  .ctl.rot{background:var(--blue);color:#fff}
+  .ctl.rot .lab{color:rgba(255,255,255,.85)}
+
+  /* ---------- overlay-menyer ---------- */
+  .overlay{
+    position:absolute;inset:0;display:grid;place-items:center;padding:24px;
+    padding-top:calc(24px + env(safe-area-inset-top,0px));padding-bottom:calc(24px + env(safe-area-inset-bottom,0px));
+    background:rgba(8,26,18,.72);backdrop-filter:blur(3px);z-index:20;
+  }
+  .card{
+    background:var(--panel);border-radius:24px;box-shadow:var(--shadow);
+    padding:26px 22px;max-width:390px;width:100%;max-height:100%;overflow:auto;text-align:center;
+  }
+  .card h1{font-size:30px;margin:0 0 2px;color:var(--ink)}
+  .card .tag{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--green-d);font-weight:700;margin-bottom:12px}
+  .card p{color:var(--ink-soft);font-size:14.5px;line-height:1.55;margin:0 0 14px}
+  .how{text-align:left;background:var(--panel-2);border-radius:16px;padding:14px 16px;margin:0 0 18px}
+  .how li{list-style:none;display:flex;gap:10px;align-items:flex-start;margin:0 0 10px;font-size:14px;color:var(--ink)}
+  .how li:last-child{margin-bottom:0}
+  .how .ic{font-size:20px;line-height:1.3;flex:none}
+  .how b{color:var(--ink)}
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    background:var(--green);color:#fff;border:none;border-radius:16px;
+    padding:15px 26px;font-size:18px;font-weight:700;cursor:pointer;width:100%;
+    font-family:Fredoka,Inter,sans-serif;box-shadow:0 6px 16px rgba(47,168,79,.35);
+  }
+  .btn:active{transform:scale(.97)}
+  .btn.sec{background:var(--panel-2);color:var(--ink);box-shadow:none;margin-top:10px}
+  .bignum{display:flex;gap:10px;justify-content:center;margin:4px 0 16px}
+  .bignum .box{background:var(--panel-2);border-radius:16px;padding:12px 16px;min-width:88px}
+  .bignum .box .k{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);font-weight:700}
+  .bignum .box .v{font-size:26px;font-weight:700;font-family:Fredoka,Inter,sans-serif;color:var(--ink);font-variant-numeric:tabular-nums}
+  .lesson{text-align:left;background:#fff4f1;border:1px solid #f6d6cf;border-radius:16px;padding:14px 16px;margin:0 0 16px}
+  .lesson h3{margin:0 0 8px;font-size:14px;color:var(--red)}
+  .lesson .row{display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--ink);margin-bottom:7px}
+  .lesson .row:last-child{margin-bottom:0}
+  .lesson .em{font-size:18px;flex:none}
+  .lesson .ok{color:var(--green-d);font-weight:700}
+  .praise{background:var(--green-l);border:1px solid #c3e8cb;color:var(--green-d)}
+  .praise h3{color:var(--green-d)}
+  [hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="c"></canvas>
+
+  <div id="hud">
+    <div class="topbar">
+      <div class="statgroup">
+        <div class="stat"><span class="k">Poäng</span><span class="v" id="score">0</span></div>
+        <div class="stat"><span class="k">Nivå</span><span class="v" id="level">1</span></div>
+      </div>
+      <button class="iconbtn" id="pauseBtn" aria-label="Paus">⏸</button>
+    </div>
+    <div id="toast"></div>
+  </div>
+
+  <div id="controls">
+    <button class="ctl" id="bLeft" aria-label="Vänster"><span class="big">◀</span></button>
+    <button class="ctl rot" id="bRot" aria-label="Rotera"><span class="big">⟳</span><span class="lab">Rotera</span></button>
+    <button class="ctl drop" id="bDrop" aria-label="Släpp"><span class="big">⤓</span><span class="lab">Släpp</span></button>
+    <button class="ctl" id="bRight" aria-label="Höger"><span class="big">▶</span></button>
+  </div>
+
+  <!-- Startmeny -->
+  <div class="overlay" id="startOv">
+    <div class="card">
+      <div class="tag">Sopsortering · faller ovanifrån</div>
+      <h1>Sorteringsfall</h1>
+      <p>Bitarna faller — styr varje föremål till <b>rätt fack</b> längst ner. Lanen är färgade så du ser var allt hör hemma.</p>
+      <ul class="how">
+        <li><span class="ic">🎯</span><span>Hamnar ett föremål i <b>rätt fack</b> försvinner det och ger poäng.</span></li>
+        <li><span class="ic">🗑️</span><span>Hamnar det i <b>fel fack</b> ligger det kvar som skräp och staplas uppåt.</span></li>
+        <li><span class="ic">👻</span><span>Spökbiten längst ner visar <b>grönt = rätt</b> och <b>rött = fel</b> innan du släpper.</span></li>
+        <li><span class="ic">🔄</span><span>Rotera mono-bitar lodrätt så alla rutor hamnar i samma fack.</span></li>
+      </ul>
+      <button class="btn" id="startBtn">Börja sortera</button>
+    </div>
+  </div>
+
+  <!-- Paus -->
+  <div class="overlay" id="pauseOv" hidden>
+    <div class="card">
+      <div class="tag">Paus</div>
+      <h1>Pausat</h1>
+      <p>Facken står kvar och väntar.</p>
+      <button class="btn" id="resumeBtn">Fortsätt</button>
+      <button class="btn sec" id="restartBtn2">Börja om</button>
+    </div>
+  </div>
+
+  <!-- Game over -->
+  <div class="overlay" id="overOv" hidden>
+    <div class="card">
+      <div class="tag" id="overTag">Facken rann över</div>
+      <h1>Pass slut</h1>
+      <div class="bignum">
+        <div class="box"><div class="k">Poäng</div><div class="v" id="finScore">0</div></div>
+        <div class="box"><div class="k">Sorterat</div><div class="v" id="finSorted">0</div></div>
+        <div class="box"><div class="k">Nivå</div><div class="v" id="finLevel">1</div></div>
+      </div>
+      <div id="lessonBox"></div>
+      <button class="btn" id="againBtn">Spela igen</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- kategorier & föremål ----------
+  const CATS = [
+    {key:'plast',  label:'Plast',  color:'#ef8a33', e:'🧴'},
+    {key:'papper', label:'Papper', color:'#2f7fd1', e:'📦'},
+    {key:'metall', label:'Metall', color:'#8792a2', e:'🥫'},
+    {key:'glas',   label:'Glas',   color:'#37b27a', e:'🫙'},
+    {key:'mat',    label:'Mat',    color:'#9a6a3c', e:'🍎'},
+    {key:'rest',   label:'Rest',   color:'#596b62', e:'🗑️'},
+  ];
+  const CAT = Object.fromEntries(CATS.map(c=>[c.key,c]));
+  const FACKS = CATS.map(c=>c.key);          // lane-ordning (vänster→höger)
+  const COLS = FACKS.length;                 // 6
+  const ROWS = 14;
+
+  const ITEMS = {
+    plast:  [['Plastflaska','🧴'],['Plastpåse','🛍️'],['Plastmugg','🥤'],['Schampoflaska','🧴']],
+    papper: [['Pappkartong','📦'],['Juicepaket','🧃'],['Mjölkpaket','🥛'],['Wellpapp','📦']],
+    metall: [['Konservburk','🥫'],['Dricksburk','🥫'],['Kapsyl','⚙️'],['Aluminiumform','🍽️']],
+    glas:   [['Glasburk','🫙'],['Vinflaska','🍾'],['Syltburk','🫙'],['Glasflaska','🍶']],
+    mat:    [['Bananskal','🍌'],['Äppelskrutt','🍎'],['Kaffesump','☕'],['Brödbit','🍞'],['Fiskrens','🐟']],
+    rest:   [['Tandborste','🪥'],['Trasigt porslin','🍽️'],['Blöja','🧷'],['Disktrasa','🧽']],
+  };
+  function randItem(cat){
+    const a = ITEMS[cat]; const it = a[(Math.random()*a.length)|0];
+    return {cat:cat, name:it[0], e:it[1]};
+  }
+
+  // ---------- tetromino-former ----------
+  // 1 = fylld ruta. Rotation görs genom att rotera matrisen (cellens föremål följer med).
+  const SHAPES = {
+    I:[[1,1,1,1]],
+    O:[[1,1],[1,1]],
+    T:[[1,1,1],[0,1,0]],
+    L:[[1,0],[1,0],[1,1]],
+    J:[[0,1],[0,1],[1,1]],
+    S:[[0,1,1],[1,1,0]],
+    Z:[[1,1,0],[0,1,1]],
+  };
+  const SHAPE_KEYS = Object.keys(SHAPES);
+
+  // bygg en bit: mono (alla rutor samma sort) eller blandad
+  function makePiece(mixed){
+    const base = SHAPES[SHAPE_KEYS[(Math.random()*SHAPE_KEYS.length)|0]];
+    const mat = base.map(row=>row.slice());
+    if(!mixed){
+      const cat = FACKS[(Math.random()*COLS)|0];
+      for(let i=0;i<mat.length;i++) for(let j=0;j<mat[i].length;j++)
+        mat[i][j] = mat[i][j] ? randItem(cat) : null;
+    } else {
+      for(let i=0;i<mat.length;i++) for(let j=0;j<mat[i].length;j++){
+        if(mat[i][j]){ const cat = FACKS[(Math.random()*COLS)|0]; mat[i][j]=randItem(cat); }
+        else mat[i][j]=null;
+      }
+    }
+    return {mat};
+  }
+  function rotateMat(mat){
+    const h=mat.length, w=mat[0].length;
+    const out=Array.from({length:w},()=>Array(h).fill(null));
+    for(let i=0;i<h;i++) for(let j=0;j<w;j++) out[j][h-1-i]=mat[i][j];
+    return out;
+  }
+
+  // ---------- speltillstånd ----------
+  let grid, cur, curR, curC, nextPiece;
+  let score, level, sortedTotal, running, paused, over, mistakes;
+  let dropAcc, lastT, fackFlash, particles;
+
+  function resetState(){
+    grid = Array.from({length:ROWS},()=>Array(COLS).fill(null));
+    score=0; level=1; sortedTotal=0; running=false; paused=false; over=false;
+    mistakes={}; dropAcc=0; lastT=0; fackFlash=Array(COLS).fill(0); particles=[];
+    nextPiece = makePiece(false);
+    spawn();
+  }
+  function dropInterval(){ return Math.max(230, 880 - (level-1)*70); }
+  function mixChance(){ return Math.min(0.78, (level-1)*0.11); }
+
+  function spawn(){
+    cur = nextPiece.mat;
+    nextPiece = makePiece(Math.random() < mixChance());
+    curR = 0;
+    curC = Math.floor((COLS - cur[0].length)/2);
+    if(collides(cur,curR,curC)){ endGame(); }
+  }
+
+  function collides(mat,r,c){
+    for(let i=0;i<mat.length;i++) for(let j=0;j<mat[i].length;j++){
+      if(!mat[i][j]) continue;
+      const rr=r+i, cc=c+j;
+      if(cc<0||cc>=COLS||rr>=ROWS) return true;
+      if(rr>=0 && grid[rr][cc]) return true;
+    }
+    return false;
+  }
+  function occupied(mat,r,c){
+    const out=[];
+    for(let i=0;i<mat.length;i++) for(let j=0;j<mat[i].length;j++)
+      if(mat[i][j]) out.push({r:r+i,c:c+j,cell:mat[i][j]});
+    return out;
+  }
+  function ghostRow(){
+    let g=curR; while(!collides(cur,g+1,curC)) g++; return g;
+  }
+
+  // ---------- drag ----------
+  function tryMove(dc){
+    if(!running||paused||over) return;
+    if(!collides(cur,curR,curC+dc)) curC+=dc;
+  }
+  function tryRotate(){
+    if(!running||paused||over) return;
+    const r=rotateMat(cur);
+    for(const k of [0,-1,1,-2,2]){
+      if(!collides(r,curR,curC+k)){ cur=r; curC+=k; return; }
+    }
+  }
+  function hardDrop(){
+    if(!running||paused||over) return;
+    curR=ghostRow(); lock();
+  }
+  function stepDown(){
+    if(collides(cur,curR+1,curC)){ lock(); }
+    else curR++;
+  }
+
+  function recordMistake(cell){
+    const key = cell.name;
+    if(!mistakes[key]) mistakes[key]={name:cell.name, e:cell.e, cat:cell.cat, n:0};
+    mistakes[key].n++;
+  }
+
+  function lock(){
+    const cells = occupied(cur,curR,curC);
+    let collected=0, wrong=0, firstWrong=null, firstRight=null;
+    const flashCols={};
+    for(const {r,c,cell} of cells){
+      if(r<0){ // staplade över toppen
+        continue;
+      }
+      if(FACKS[c]===cell.cat){
+        collected++; firstRight=firstRight||cell; flashCols[c]=1;
+        addPoof(c,r,CAT[cell.cat].color,true);
+      } else {
+        grid[r][c]={cat:cell.cat,name:cell.name,e:cell.e};
+        wrong++; firstWrong=firstWrong||cell;
+        recordMistake(cell);
+        addPoof(c,r,'#b23b2f',false);
+      }
+    }
+    compact();
+    // poäng
+    let pts=0;
+    if(collected){
+      pts = collected*10 + (collected>=3 ? collected*5 : 0);
+      score+=pts; sortedTotal+=collected;
+      for(const c in flashCols) fackFlash[c]=1;
+    }
+    // nivå
+    const nl = Math.min(10, Math.floor(sortedTotal/16)+1);
+    if(nl>level){ level=nl; showToast('Nivå '+level+' — tempot ökar!', 'info'); }
+    else if(wrong){ showToast('Fel! '+firstWrong.name+' hör till '+CAT[firstWrong.cat].label, 'bad'); }
+    else if(collected){
+      showToast(collected===1 ? ('Rätt! '+firstRight.name+' → '+CAT[firstRight.cat].label)
+                              : ('Snyggt! +'+pts+' poäng'), 'good');
+    }
+    updateHud();
+    // överfyllt?
+    for(let c=0;c<COLS;c++) if(grid[0][c]){ endGame(); return; }
+    spawn();
+  }
+
+  function compact(){ // dra ner skräp i varje kolumn (inga hål)
+    for(let c=0;c<COLS;c++){
+      const stack=[];
+      for(let r=ROWS-1;r>=0;r--){ if(grid[r][c]){ stack.push(grid[r][c]); grid[r][c]=null; } }
+      for(let i=0;i<stack.length;i++) grid[ROWS-1-i][c]=stack[i];
+    }
+  }
+
+  // ---------- effekter ----------
+  function addPoof(c,r,color,good){
+    const n = good?10:6;
+    for(let i=0;i<n;i++){
+      particles.push({c,r,color,
+        vx:(Math.random()-0.5)*2.4, vy:-(Math.random()*2+ (good?1.4:0.6)),
+        life:1, good});
+    }
+  }
+
+  // ---------- rendering ----------
+  const canvas=document.getElementById('c');
+  const ctx=canvas.getContext('2d');
+  let CW=0,CH=0,DPR=1;
+  let cell=24, bx=0, by=0, boardW=0, boardH=0, fackH=0;
+
+  function resize(){
+    DPR=Math.min(window.devicePixelRatio||1,2.5);
+    CW=canvas.clientWidth; CH=canvas.clientHeight;
+    canvas.width=Math.round(CW*DPR); canvas.height=Math.round(CH*DPR);
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+    layout();
+  }
+  function layout(){
+    const topPad = 72 + (safe('top'));
+    const botPad = 96 + (safe('bottom'));
+    const availV = CH - topPad - botPad;
+    const availW = CW - 24;
+    // plats: ROWS rader + fack-rad (1.18) + mellanrum
+    cell = Math.min(availW/COLS, availV/(ROWS + 1.35));
+    cell = Math.max(16, Math.floor(cell));
+    boardW = cell*COLS; boardH = cell*ROWS; fackH = cell*1.18;
+    bx = Math.round((CW-boardW)/2);
+    const total = boardH + 8 + fackH;
+    by = Math.round(topPad + (availV - total)/2);
+    if(by < topPad) by = topPad;
+  }
+  function safe(side){
+    const v=getComputedStyle(document.documentElement).getPropertyValue('--sa-'+side);
+    return 0; // insets redan hanterade i CSS-pad; håll layout enkel
+  }
+
+  function rr(x,y,w,h,r){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
+  }
+  function drawCell(x,y,s,color,emoji,opts){
+    opts=opts||{};
+    const pad=Math.max(1,s*0.06);
+    rr(x+pad,y+pad,s-pad*2,s-pad*2,s*0.2);
+    ctx.fillStyle=color; ctx.fill();
+    // ljus topp-kant
+    ctx.save(); ctx.clip();
+    ctx.fillStyle='rgba(255,255,255,.22)';
+    ctx.fillRect(x,y,s,s*0.4);
+    ctx.restore();
+    if(opts.dirty){
+      rr(x+pad,y+pad,s-pad*2,s-pad*2,s*0.2);
+      ctx.fillStyle='rgba(10,14,12,.34)'; ctx.fill();
+    }
+    if(emoji){
+      ctx.font=(s*0.55)+'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.globalAlpha = opts.dirty?0.75:1;
+      ctx.fillText(emoji, x+s/2, y+s/2+s*0.03);
+      ctx.globalAlpha=1;
+    }
+  }
+
+  function render(){
+    ctx.clearRect(0,0,CW,CH);
+
+    // spelplans-panel
+    rr(bx-6, by-6, boardW+12, boardH+12, 16);
+    ctx.fillStyle='rgba(255,255,255,.07)'; ctx.fill();
+
+    // kolumn-lanes (färgtonade så man ser vart saker hör)
+    for(let c=0;c<COLS;c++){
+      const col=CAT[FACKS[c]].color;
+      ctx.fillStyle=hexA(col,0.14);
+      ctx.fillRect(bx+c*cell, by, cell, boardH);
+      ctx.fillStyle='rgba(255,255,255,.05)';
+      ctx.fillRect(bx+c*cell+cell-1, by, 1, boardH);
+    }
+    // ram
+    rr(bx, by, boardW, boardH, 10);
+    ctx.lineWidth=1.5; ctx.strokeStyle='rgba(255,255,255,.14)'; ctx.stroke();
+
+    // skräp (garbage)
+    for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+      const g=grid[r][c];
+      if(g) drawCell(bx+c*cell, by+r*cell, cell, CAT[g.cat].color, g.e, {dirty:true});
+    }
+
+    // spökbit: visar rätt/fel per ruta
+    if(running && !over){
+      const gr=ghostRow();
+      for(const {r,c,cell:cc} of occupied(cur,gr,curC)){
+        if(r<0) continue;
+        const ok = FACKS[c]===cc.cat;
+        const x=bx+c*cell, y=by+r*cell, pad=Math.max(1,cell*0.06);
+        rr(x+pad,y+pad,cell-pad*2,cell-pad*2,cell*0.2);
+        ctx.fillStyle = ok ? 'rgba(47,168,79,.22)' : 'rgba(226,72,58,.22)';
+        ctx.fill();
+        ctx.lineWidth=2; ctx.setLineDash([4,3]);
+        ctx.strokeStyle = ok ? 'rgba(47,168,79,.95)' : 'rgba(226,72,58,.95)';
+        ctx.stroke(); ctx.setLineDash([]);
+      }
+      // fallande bit
+      for(const {r,c,cell:cc} of occupied(cur,curR,curC)){
+        if(r<0) continue;
+        drawCell(bx+c*cell, by+r*cell, cell, CAT[cc.cat].color, cc.e, {});
+      }
+    }
+
+    // partiklar
+    for(const p of particles){
+      const x=bx+(p.c+0.5)*cell + p.vx*cell*0.22*(1-p.life)*6;
+      const y=by+(p.r+0.5)*cell + p.vy*cell*0.22*(1-p.life)*6;
+      ctx.globalAlpha=Math.max(0,p.life);
+      ctx.fillStyle=p.color;
+      const s=cell*0.16;
+      ctx.beginPath(); ctx.arc(x,y,s,0,Math.PI*2); ctx.fill();
+      ctx.globalAlpha=1;
+    }
+
+    // ---- fack-rad ----
+    const fy=by+boardH+8;
+    for(let c=0;c<COLS;c++){
+      const cat=CAT[FACKS[c]];
+      const x=bx+c*cell, w=cell;
+      const flash=fackFlash[c];
+      rr(x+1, fy, w-2, fackH, 10);
+      ctx.fillStyle=cat.color; ctx.fill();
+      if(flash>0){
+        rr(x+1, fy, w-2, fackH, 10);
+        ctx.fillStyle='rgba(255,255,255,'+(flash*0.55)+')'; ctx.fill();
+      }
+      // emoji
+      ctx.font=(cell*0.5)+'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(cat.e, x+w/2, fy+fackH*0.38);
+      // etikett
+      ctx.font='700 '+Math.max(8,cell*0.21)+'px Fredoka, Inter, sans-serif';
+      ctx.fillStyle='rgba(255,255,255,.96)';
+      ctx.fillText(cat.label, x+w/2, fy+fackH*0.8);
+    }
+
+    // ---- nästa-bit (uppe till höger) ----
+    drawNext();
+  }
+
+  function drawNext(){
+    const m=nextPiece.mat;
+    const s=Math.max(12, cell*0.52);
+    const w=m[0].length*s, h=m.length*s;
+    const panW=Math.max(w, s*2)+16, panH=h+26;
+    const px=CW-panW-12, py=by;
+    rr(px,py,panW,panH,12);
+    ctx.fillStyle='rgba(255,255,255,.95)'; ctx.fill();
+    ctx.font='700 10px Inter, sans-serif'; ctx.fillStyle='#4d5f57';
+    ctx.textAlign='left'; ctx.textBaseline='top';
+    ctx.fillText('NÄSTA', px+9, py+7);
+    const ox=px+(panW-w)/2, oy=py+20;
+    for(let i=0;i<m.length;i++) for(let j=0;j<m[i].length;j++){
+      const cc=m[i][j]; if(!cc) continue;
+      drawCell(ox+j*s, oy+i*s, s, CAT[cc.cat].color, cc.e, {});
+    }
+  }
+
+  function hexA(hex,a){
+    const n=parseInt(hex.slice(1),16);
+    return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a+')';
+  }
+
+  // ---------- loop ----------
+  function frame(t){
+    if(!lastT) lastT=t;
+    const dt=Math.min(64, t-lastT); lastT=t;
+    if(running && !paused && !over){
+      dropAcc+=dt;
+      while(dropAcc>=dropInterval()){ dropAcc-=dropInterval(); stepDown(); if(over) break; }
+    }
+    // effekter tickar alltid
+    for(const p of particles){ p.life-=dt/560; }
+    particles=particles.filter(p=>p.life>0);
+    for(let c=0;c<COLS;c++) if(fackFlash[c]>0) fackFlash[c]=Math.max(0,fackFlash[c]-dt/320);
+    render();
+    requestAnimationFrame(frame);
+  }
+
+  // ---------- HUD / menyer ----------
+  const el=id=>document.getElementById(id);
+  function updateHud(){ el('score').textContent=score; el('level').textContent=level; }
+  let toastTimer=null;
+  function showToast(msg,kind){
+    const t=el('toast'); t.textContent=msg; t.className='show '+(kind||'good');
+    clearTimeout(toastTimer);
+    toastTimer=setTimeout(()=>{ t.className=''; }, 1500);
+  }
+
+  function startGame(){
+    resetState(); running=true; paused=false; over=false;
+    updateHud();
+    el('startOv').hidden=true; el('pauseOv').hidden=true; el('overOv').hidden=true;
+  }
+  function endGame(){
+    over=true; running=false;
+    el('finScore').textContent=score;
+    el('finSorted').textContent=sortedTotal;
+    el('finLevel').textContent=level;
+    buildLesson();
+    el('overOv').hidden=false;
+  }
+  function buildLesson(){
+    const box=el('lessonBox');
+    const arr=Object.values(mistakes).sort((a,b)=>b.n-a.n).slice(0,3);
+    if(arr.length===0){
+      box.innerHTML='<div class="lesson praise"><h3>🌟 Felfritt!</h3>'+
+        '<div class="row">Du sorterade allt rätt. Starkt jobbat!</div></div>';
+      return;
+    }
+    let html='<div class="lesson"><h3>Öva lite extra på</h3>';
+    for(const m of arr){
+      html+='<div class="row"><span class="em">'+m.e+'</span>'+m.name+
+            ' → <span class="ok">'+CAT[m.cat].label+'</span>'+
+            ' <span style="color:#a06;margin-left:auto">×'+m.n+'</span></div>';
+    }
+    html+='</div>';
+    box.innerHTML=html;
+  }
+  function togglePause(){
+    if(!running||over) return;
+    paused=!paused;
+    el('pauseOv').hidden=!paused;
+  }
+
+  // ---------- input ----------
+  function press(id,fn){
+    const b=el(id);
+    const h=e=>{ e.preventDefault(); fn(); };
+    b.addEventListener('pointerdown',h);
+  }
+  press('bLeft',()=>tryMove(-1));
+  press('bRight',()=>tryMove(1));
+  press('bRot',tryRotate);
+  press('bDrop',hardDrop);
+  el('pauseBtn').addEventListener('click',togglePause);
+  el('startBtn').addEventListener('click',startGame);
+  el('againBtn').addEventListener('click',startGame);
+  el('resumeBtn').addEventListener('click',togglePause);
+  el('restartBtn2').addEventListener('click',startGame);
+
+  window.addEventListener('keydown',e=>{
+    if(e.key==='ArrowLeft'){tryMove(-1);e.preventDefault();}
+    else if(e.key==='ArrowRight'){tryMove(1);e.preventDefault();}
+    else if(e.key==='ArrowUp'||e.key==='x'||e.key==='X'){tryRotate();e.preventDefault();}
+    else if(e.key==='ArrowDown'){ if(running&&!paused&&!over){stepDown();} e.preventDefault();}
+    else if(e.key===' '){hardDrop();e.preventDefault();}
+    else if(e.key==='p'||e.key==='P'){togglePause();}
+  });
+
+  window.addEventListener('resize',resize);
+  window.addEventListener('orientationchange',()=>setTimeout(resize,120));
+
+  // init
+  resetState(); // bygger ett bräde så startskärmen har något bakom sig
+  resize();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
