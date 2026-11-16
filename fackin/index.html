@@ -982,10 +982,13 @@ function openSort(it){
   // ritad ikon i hero om inget foto finns
   if(!(it.img && it.img.ok) && ICONS.has(d.k)){
     const ieEl=card.querySelector('.ie');
-    if(ieEl){ ieEl.innerHTML='';
-      const dpr=Math.min(2,window.devicePixelRatio||1), cn=document.createElement('canvas');
-      cn.width=60*dpr; cn.height=60*dpr; cn.style.width='60px'; cn.style.height='60px';
-      const cc=cn.getContext('2d'); cc.scale(dpr,dpr); ICONS.draw(cc,30,30,52,d.k); ieEl.appendChild(cn);
+    if(ieEl){
+      const dpr=Math.min(3,window.devicePixelRatio||1), cn=document.createElement('canvas');
+      cn.width=64*dpr; cn.height=64*dpr;
+      const cc=cn.getContext('2d'); cc.scale(dpr,dpr); ICONS.draw(cc,32,32,54,d.k);
+      // en bild (data-URL) är robust i alla webbläsare; CSS för .ie img sköter storleken
+      try{ ieEl.innerHTML='<img alt="" src="'+cn.toDataURL()+'">'; }
+      catch(e){ ieEl.innerHTML=''; cn.style.width='60px'; cn.style.height='60px'; ieEl.appendChild(cn); }
     }
   }
   // glasögon nivå 2 — markera rätt fack
