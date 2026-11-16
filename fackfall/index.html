@@ -206,17 +206,24 @@
 
   // ---------- kategorier & föremål ----------
   const CATS = [
-    {key:'plast',  label:'Plast',  color:'#ef8a33', e:'🧴'},
-    {key:'papper', label:'Papper', color:'#2f7fd1', e:'📦'},
-    {key:'metall', label:'Metall', color:'#8792a2', e:'🥫'},
-    {key:'glas',   label:'Glas',   color:'#37b27a', e:'🫙'},
-    {key:'mat',    label:'Mat',    color:'#9a6a3c', e:'🍎'},
-    {key:'rest',   label:'Rest',   color:'#596b62', e:'🗑️'},
+    {key:'plast',  label:'Plast',  color:'#ef8a33', e:'🧴', sym:'sym-plast.png'},
+    {key:'papper', label:'Papper', color:'#2f7fd1', e:'📦', sym:'sym-papper.png'},
+    {key:'metall', label:'Metall', color:'#8792a2', e:'🥫', sym:'sym-metall.png'},
+    {key:'glas',   label:'Glas',   color:'#37b27a', e:'🫙', sym:'sym-fargat.png'},
+    {key:'mat',    label:'Mat',    color:'#9a6a3c', e:'🍎', sym:'sym-mat.png'},
+    {key:'rest',   label:'Rest',   color:'#596b62', e:'🗑️', sym:'sym-rest.png'},
   ];
   const CAT = Object.fromEntries(CATS.map(c=>[c.key,c]));
-  const FACKS = CATS.map(c=>c.key);          // lane-ordning (vänster→höger)
-  const COLS = FACKS.length;                 // 6
+  // Facken växer med nivån: 4 från start, 5 vid nivå 4, 6 vid nivå 7.
+  const ALL_FACKS = ['plast','papper','mat','glas','metall','rest']; // upplåsnings-ordning
+  let FACKS, COLS;                           // aktiva fack (lane-ordning v→h)
   const ROWS = 14;
+  function facksForLevel(l){ return l>=7 ? 6 : l>=4 ? 5 : 4; }
+  function setFackCount(n){ FACKS = ALL_FACKS.slice(0,n); COLS = FACKS.length; }
+
+  // fraktionssymboler – samma bilder som kärlen i Fack in
+  const symImg={};
+  CATS.forEach(c=>{ if(c.sym){ const im=new Image(); im.src=c.sym; symImg[c.key]=im; } });
 
   const ITEMS = {
     plast:  [['Plastflaska','🧴'],['Plastpåse','🛍️'],['Plastmugg','🥤'],['Schampoflaska','🧴']],
@@ -273,14 +280,25 @@
   let dropAcc, lastT, fackFlash, particles;
 
   function resetState(){
+    setFackCount(4);
     grid = Array.from({length:ROWS},()=>Array(COLS).fill(null));
     score=0; level=1; sortedTotal=0; running=false; paused=false; over=false;
     mistakes={}; dropAcc=0; lastT=0; fackFlash=Array(COLS).fill(0); particles=[];
     nextPiece = makePiece(false);
     spawn();
   }
-  function dropInterval(){ return Math.max(230, 880 - (level-1)*70); }
-  function mixChance(){ return Math.min(0.78, (level-1)*0.11); }
+  function dropInterval(){ return Math.max(300, 1100 - (level-1)*55); }   // lugnare start + mjukare ökning
+  function mixChance(){ return Math.max(0, Math.min(0.5, (level-3)*0.08)); } // bara mono-bitar t.o.m. nivå 3
+
+  // lås upp ett nytt fack: nollställ brädet och bygg om layouten
+  function growFacks(n){
+    const added = ALL_FACKS[n-1];
+    setFackCount(n);
+    grid = Array.from({length:ROWS},()=>Array(COLS).fill(null));
+    fackFlash = Array(COLS).fill(0);
+    layout();
+    showToast('Nytt fack: '+CAT[added].label+'!', 'info');
+  }
 
   function spawn(){
     cur = nextPiece.mat;
@@ -363,8 +381,13 @@
       for(const c in flashCols) fackFlash[c]=1;
     }
     // nivå
-    const nl = Math.min(10, Math.floor(sortedTotal/16)+1);
-    if(nl>level){ level=nl; showToast('Nivå '+level+' — tempot ökar!', 'info'); }
+    const nl = Math.min(10, Math.floor(sortedTotal/20)+1);
+    if(nl>level){
+      level=nl;
+      const want=facksForLevel(level);
+      if(want>COLS){ growFacks(want); }
+      else { showToast('Nivå '+level+' — tempot ökar!', 'info'); }
+    }
     else if(wrong){ showToast('Fel! '+firstWrong.name+' hör till '+CAT[firstWrong.cat].label, 'bad'); }
     else if(collected){
       showToast(collected===1 ? ('Rätt! '+firstRight.name+' → '+CAT[firstRight.cat].label)
@@ -523,10 +546,16 @@
         rr(x+1, fy, w-2, fackH, 10);
         ctx.fillStyle='rgba(255,255,255,'+(flash*0.55)+')'; ctx.fill();
       }
-      // emoji
-      ctx.font=(cell*0.5)+'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+      // fraktionssymbol (bild) – fallback till emoji om bilden inte laddats
+      const sy=fy+fackH*0.37, im=symImg[cat.key];
       ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText(cat.e, x+w/2, fy+fackH*0.38);
+      if(im && im.complete && im.naturalWidth>0){
+        const sz=fackH*0.62;
+        ctx.drawImage(im, x+w/2-sz/2, sy-sz/2, sz, sz);
+      } else {
+        ctx.font=(cell*0.5)+'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+        ctx.fillText(cat.e, x+w/2, sy);
+      }
       // etikett
       ctx.font='700 '+Math.max(8,cell*0.21)+'px Fredoka, Inter, sans-serif';
       ctx.fillStyle='rgba(255,255,255,.96)';
