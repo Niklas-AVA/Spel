@@ -189,17 +189,14 @@
   .item-hero p{margin:3px 0 0;font-size:14px;color:var(--ink-soft)}
   .sort-q{font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-soft);margin:0 4px 8px}
   .karl-label{font-size:13px;font-weight:700;color:var(--ink-soft);margin:10px 4px 7px;display:flex;align-items:center;gap:6px}
-  .fak-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-  .special-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
-  .fak{border:none;border-radius:14px;padding:12px 4px 10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;font-family:Fredoka;font-weight:600;color:#fff;line-height:1.05;text-align:center;position:relative;overflow:hidden;min-height:78px;justify-content:center}
+  .fak-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+  .fak{border:2px solid var(--line);border-radius:12px;background:#fff;padding:5px 4px 7px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center}
   .fak:active{transform:scale(.96)}
-  .fak .fe{font-size:24px}
-  .fak .fn{font-size:12px}
-  .fak.special{min-height:66px;flex-direction:row;gap:8px;padding:14px 8px}
-  .fak.special .fe{font-size:26px}
-  .fak.special .fn{font-size:15px}
-  .fak.correct{outline:4px solid #7CFFA6;outline-offset:-4px;animation:rightpulse .5s ease}
-  .fak.wrong{outline:4px solid #ffd0cb;outline-offset:-4px;opacity:.55}
+  .fak .symimg{width:100%;aspect-ratio:1;border-radius:8px;object-fit:cover;display:block}
+  .fak .emojibox{width:100%;aspect-ratio:1;border-radius:8px;display:grid;place-items:center;font-size:30px;color:#fff}
+  .fak .fn{font-size:10.5px;font-weight:600;color:var(--ink);line-height:1.12;font-family:Fredoka}
+  .fak.correct{border-color:#2fa84f;outline:3px solid #7CFFA6;outline-offset:-1px;animation:rightpulse .5s ease}
+  .fak.wrong{border-color:#e2483a;opacity:.5}
   @keyframes rightpulse{0%,100%{transform:scale(1)}40%{transform:scale(1.05)}}
   .sort-feedback{text-align:center;font-family:Fredoka;font-weight:700;font-size:16px;min-height:22px;margin:12px 4px 2px}
   .sort-feedback.good{color:var(--green-d)}
@@ -322,8 +319,8 @@
         <ul class="helplist">
           <li><span class="he">🚶</span><span><b>Gå rundan.</b> Dra på skärmen (eller använd piltangenter) för att gå runt i området.</span></li>
           <li><span class="he">🔎</span><span><b>Hitta skräpet.</b> Varje sak har en tydlig skylt med vad det är. Gå fram till den.</span></li>
-          <li><span class="he">♻️</span><span><b>Välj rätt fack.</b> Du får upp båda <b>fyrfackskärlen</b>, <b>elboxen</b> och <b>Återvinningscentralen</b>. Välj var saken ska slängas.</span></li>
-          <li><span class="he">⚡</span><span><b>Kluringar.</b> T.ex. <b>litiumbatterier</b> och <b>farligt avfall</b> ska till ÅVC – inte i kärlet!</span></li>
+          <li><span class="he">♻️</span><span><b>Välj rätt fraktion.</b> Facken använder <b>Avfall Sveriges symboler</b>. Du får upp båda <b>fyrfackskärlen</b>, <b>el-boxen</b> (batterier, ljuskällor, småelektronik) och <b>Återvinningscentralen</b>.</span></li>
+          <li><span class="he">⚡</span><span><b>Kluringar.</b> <b>Litiumbatterier</b> och <b>farligt avfall</b> → ÅVC, <b>porslin &amp; keramik</b> → ÅVC – inte i kärlet!</span></li>
           <li><span class="he">🔥</span><span><b>Kombo.</b> Flera rätt i rad ger poängmultiplikator.</span></li>
         </ul>
       </div>
@@ -416,50 +413,57 @@ if(window.visualViewport) window.visualViewport.addEventListener('resize', resiz
 //  Fraktioner: kärl 1 (mat, rest, fargat, ofargat) · kärl 2 (tidning, papper, plast, metall)
 //  + elbox (småel/batterier/lampor) + avc (Återvinningscentral: farligt & stort)
 // =========================================================================
-// Namn enligt Avfall Sveriges fraktionsetiketter (sverigesorterar.se). Färgerna
-// ligger nära skyltsystemets – byt till exakta HEX om du har manualen.
+// Avfall Sveriges officiella fraktionssymboler (utklippta ur skyltsystemet,
+// fackin/sym-*.png). Färgerna är sampladе ur symbolerna.
 const FRAC = {
-  mat:    {name:'Matavfall',                 short:'Matavfall',   emoji:'🍎', color:'#7a9a35', karl:1},
-  rest:   {name:'Restavfall',                short:'Restavfall',  emoji:'🗑️', color:'#4d5159', karl:1},
-  fargat: {name:'Färgade glasförpackningar', short:'Färgat glas', emoji:'🍾', color:'#2f8f4f', karl:1},
-  ofargat:{name:'Ofärgade glasförpackningar',short:'Ofärgat glas',emoji:'🫙', color:'#64a6c8', karl:1},
-  tidning:{name:'Tidningar',                 short:'Tidningar',   emoji:'📰', color:'#2f6fd1', karl:2},
-  papper: {name:'Pappersförpackningar',      short:'Papper',      emoji:'📦', color:'#c9802f', karl:2},
-  plast:  {name:'Plastförpackningar',        short:'Plast',       emoji:'🥤', color:'#d94a3d', karl:2},
-  metall: {name:'Metallförpackningar',       short:'Metall',      emoji:'🥫', color:'#d0a52a', karl:2},
-  elbox:  {name:'El-boxen',                  short:'El-box',      emoji:'🔋', color:'#b8352a', karl:0},
-  avc:    {name:'Återvinningscentral',       short:'ÅVC',         emoji:'♻️', color:'#2b3340', karl:0},
+  mat:      {name:'Matavfall',                 img:'sym-mat.png',      color:'#3aa66c', group:'k1'},
+  rest:     {name:'Restavfall',                img:'sym-rest.png',     color:'#171717', group:'k1'},
+  fargat:   {name:'Färgade glasförpackningar', img:'sym-fargat.png',   color:'#2fa58a', group:'k1'},
+  ofargat:  {name:'Ofärgade glasförpackningar',img:'sym-ofargat.png',  color:'#2fa58a', group:'k1'},
+  tidning:  {name:'Tidningar',                 img:'sym-tidning.png',  color:'#1483ba', group:'k2'},
+  papper:   {name:'Pappersförpackningar',      img:'sym-papper.png',   color:'#bda778', group:'k2'},
+  plast:    {name:'Plastförpackningar',        img:'sym-plast.png',    color:'#95397c', group:'k2'},
+  metall:   {name:'Metallförpackningar',       img:'sym-metall.png',   color:'#667177', group:'k2'},
+  batteri:  {name:'Batterier',                 img:'sym-batteri.png',  color:'#ef8a00', group:'elbox'},
+  ljuskalla:{name:'Ljuskällor',               img:'sym-ljuskalla.png', color:'#ef8a00', group:'elbox'},
+  smael:    {name:'Småelektronik',             img:'sym-smael.png',    color:'#ef8a00', group:'elbox'},
+  porslin:  {name:'Porslin & keramik',         img:'sym-porslin.png',  color:'#0e436f', group:'avc'},
+  avc:      {name:'Återvinningscentral',       emoji:'♻️',             color:'#2b3340', group:'avc'},
 };
-const FRAC_ORDER_K1 = ['mat','rest','fargat','ofargat'];
-const FRAC_ORDER_K2 = ['tidning','papper','plast','metall'];
+// Grupperna = de fysiska dit-platserna. Spelaren väljer rätt fraktion i rätt grupp.
+const GROUPS = [
+  {id:'k1',    label:'🟩 Fyrfackskärl 1',        keys:['mat','rest','fargat','ofargat']},
+  {id:'k2',    label:'🟦 Fyrfackskärl 2',        keys:['tidning','papper','plast','metall']},
+  {id:'elbox', label:'🔋 El-boxen',               keys:['batteri','ljuskalla','smael']},
+  {id:'avc',   label:'♻️ Återvinningscentralen', keys:['porslin','avc']},
+];
 
 // Varje sak: {n:namn, e:emoji, f:fraktion, hint:kort ledtråd, klur:true om kluring/special}
 const ITEMS = [
   // --- Matavfall ---
-  {n:'Bananskal', e:'🍌', f:'mat', hint:'Matrester och skal'},
-  {n:'Äppelskrutt', e:'🍎', f:'mat', hint:'Matrester och skal'},
-  {n:'Kaffesump', e:'☕', f:'mat', hint:'Även kaffefiltret'},
-  {n:'Potatisskal', e:'🥔', f:'mat', hint:'Skal och matrester'},
-  {n:'Fiskrens', e:'🐟', f:'mat', hint:'Matrester'},
-  {n:'Brödkant', e:'🍞', f:'mat', hint:'Gammalt bröd'},
+  {n:'Bananskal', e:'🍌', f:'mat', hint:'Matrester och skal → matavfall'},
+  {n:'Äppelskrutt', e:'🍎', f:'mat', hint:'Matrester och skal → matavfall'},
+  {n:'Kaffesump', e:'☕', f:'mat', hint:'Kaffesump & filter → matavfall'},
+  {n:'Potatisskal', e:'🥔', f:'mat', hint:'Skal och matrester → matavfall'},
+  {n:'Fiskrens', e:'🐟', f:'mat', hint:'Matrester → matavfall'},
+  {n:'Brödkant', e:'🍞', f:'mat', hint:'Gammalt bröd → matavfall'},
   // --- Restavfall ---
   {n:'Blöja', e:'🧷', f:'rest', hint:'Hygienavfall → restavfall'},
-  {n:'Dammsugarpåse', e:'🧹', f:'rest', hint:'Restavfall'},
+  {n:'Dammsugarpåse', e:'🧹', f:'rest', hint:'→ restavfall'},
   {n:'Tops', e:'🧴', f:'rest', hint:'Bomullspinnar → restavfall'},
   {n:'Kuvert', e:'✉️', f:'rest', hint:'Kluring! Lim & fönster → restavfall', klur:true},
-  {n:'Tuggummi', e:'🫧', f:'rest', hint:'Restavfall'},
-  {n:'Trasig kruka (keramik)', e:'🏺', f:'rest', hint:'Porslin/keramik → restavfall', klur:true},
+  {n:'Tuggummi', e:'🫧', f:'rest', hint:'→ restavfall'},
   // --- Färgat glas ---
   {n:'Grön vinflaska', e:'🍷', f:'fargat', hint:'Färgad glasförpackning'},
   {n:'Brun ölflaska', e:'🍺', f:'fargat', hint:'Färgad glasförpackning'},
   // --- Ofärgat glas ---
-  {n:'Ofärgad syltburk', e:'🫙', f:'ofargat', hint:'Klar glasförpackning'},
-  {n:'Klar glasflaska', e:'🍶', f:'ofargat', hint:'Ofärgat glas'},
+  {n:'Ofärgad syltburk', e:'🫙', f:'ofargat', hint:'Ofärgad glasförpackning'},
+  {n:'Klar glasflaska', e:'🍶', f:'ofargat', hint:'Ofärgad glasförpackning'},
   // --- Tidningar / returpapper ---
   {n:'Dagstidning', e:'📰', f:'tidning', hint:'Tidningar & returpapper'},
-  {n:'Reklamblad', e:'📄', f:'tidning', hint:'Returpapper'},
-  {n:'Skrivpapper', e:'📝', f:'tidning', hint:'Returpapper'},
-  {n:'Pocketbok', e:'📕', f:'tidning', hint:'Returpapper'},
+  {n:'Reklamblad', e:'📄', f:'tidning', hint:'Returpapper → tidningar'},
+  {n:'Skrivpapper', e:'📝', f:'tidning', hint:'Returpapper → tidningar'},
+  {n:'Pocketbok', e:'📕', f:'tidning', hint:'Returpapper → tidningar'},
   // --- Pappersförpackningar ---
   {n:'Mjölkpaket', e:'🥛', f:'papper', hint:'Pappersförpackning (vik ihop)'},
   {n:'Wellpappkartong', e:'📦', f:'papper', hint:'Pappersförpackning'},
@@ -468,28 +472,33 @@ const ITEMS = [
   // --- Plastförpackningar ---
   {n:'Yoghurtburk', e:'🥛', f:'plast', hint:'Plastförpackning'},
   {n:'Schampoflaska', e:'🧴', f:'plast', hint:'Tom plastförpackning'},
-  {n:'Plastpåse', e:'🛍️', f:'plast', hint:'Plastförpackning'},
+  {n:'Plastpåse', e:'🛍️', f:'plast', hint:'Mjukplast → plastförpackning'},
   {n:'Plastfolie', e:'🎞️', f:'plast', hint:'Mjukplast → plastförpackning'},
   // --- Metallförpackningar ---
   {n:'Konservburk', e:'🥫', f:'metall', hint:'Metallförpackning (sköljd)'},
   {n:'Aluminiumfolie', e:'🫔', f:'metall', hint:'Metallförpackning'},
-  {n:'Kaviartub', e:'🧴', f:'metall', hint:'Metalltub → metall'},
+  {n:'Kaviartub', e:'🧴', f:'metall', hint:'Metalltub → metallförpackning'},
   {n:'Konservlock', e:'🔩', f:'metall', hint:'Metallförpackning'},
-  // --- El-box (småel, batterier, ljuskällor) ---
-  {n:'AA-batteri', e:'🔋', f:'elbox', hint:'Vanliga batterier → el-boxen', klur:true},
-  {n:'LED-lampa', e:'💡', f:'elbox', hint:'Ljuskällor → el-boxen', klur:true},
-  {n:'Trasiga hörlurar', e:'🎧', f:'elbox', hint:'Småelektronik → el-boxen', klur:true},
-  {n:'Gammal mobil', e:'📱', f:'elbox', hint:'Småelektronik → el-boxen', klur:true},
-  {n:'Laddsladd', e:'🔌', f:'elbox', hint:'Sladdar → el-boxen', klur:true},
-  {n:'Elektrisk tandborste', e:'🪥', f:'elbox', hint:'Småel → el-boxen', klur:true},
-  // --- ÅVC (farligt avfall, lithium, stort) ---
-  {n:'Litiumbatteri (verktyg)', e:'⚡', f:'avc', hint:'Kluring! Litiumbatteri → ÅVC', klur:true},
+  // --- Batterier (el-boxen) ---
+  {n:'AA-batteri', e:'🔋', f:'batteri', hint:'Batterier → el-boxen', klur:true},
+  {n:'Knappcellsbatteri', e:'⚪', f:'batteri', hint:'Batterier → el-boxen', klur:true},
+  // --- Ljuskällor (el-boxen) ---
+  {n:'LED-lampa', e:'💡', f:'ljuskalla', hint:'Ljuskällor → el-boxen', klur:true},
+  {n:'Lysrör', e:'🪄', f:'ljuskalla', hint:'Lysrör är en ljuskälla → el-boxen', klur:true},
+  // --- Småelektronik (el-boxen) ---
+  {n:'Trasiga hörlurar', e:'🎧', f:'smael', hint:'Småelektronik → el-boxen', klur:true},
+  {n:'Gammal mobil', e:'📱', f:'smael', hint:'Småelektronik → el-boxen', klur:true},
+  {n:'Laddsladd', e:'🔌', f:'smael', hint:'Sladdar → småelektronik → el-boxen', klur:true},
+  {n:'Elektrisk tandborste', e:'🪥', f:'smael', hint:'Småelektronik → el-boxen', klur:true},
+  // --- Porslin & keramik (ÅVC) ---
+  {n:'Trasig kaffekopp', e:'☕', f:'porslin', hint:'Porslin & keramik → ÅVC', klur:true},
+  {n:'Keramikkruka', e:'🏺', f:'porslin', hint:'Porslin & keramik → ÅVC', klur:true},
+  // --- Återvinningscentral: farligt avfall, lithium, grovt ---
+  {n:'Litiumbatteri (verktyg)', e:'⚡', f:'avc', hint:'Kluring! Litiumbatteri = farligt → ÅVC', klur:true},
   {n:'Burk målarfärg', e:'🎨', f:'avc', hint:'Farligt avfall → ÅVC', klur:true},
   {n:'Nagellack', e:'💅', f:'avc', hint:'Farligt avfall → ÅVC', klur:true},
   {n:'Lösningsmedel', e:'🧪', f:'avc', hint:'Farligt avfall → ÅVC', klur:true},
-  {n:'Lysrör', e:'🪄', f:'avc', hint:'Lysrör är farligt avfall → ÅVC', klur:true},
-  {n:'Trasig stekpanna', e:'🍳', f:'avc', hint:'Metallskrot → ÅVC', klur:true},
-  {n:'Spraybunke med rester', e:'🧯', f:'avc', hint:'Farligt avfall → ÅVC', klur:true},
+  {n:'Trasig stekpanna', e:'🍳', f:'avc', hint:'Metallskrot/grovavfall → ÅVC', klur:true},
   {n:'Gammal brödrost', e:'🍞', f:'avc', hint:'Större elektronik → ÅVC', klur:true},
 ];
 
@@ -873,35 +882,34 @@ function openSort(it){
   const d=it.def;
   const card=document.getElementById('sortcard');
   const showHint = save.upg.glasogon>=1;
+  let groupsHtml='';
+  GROUPS.forEach(g=>{
+    const cols=Math.min(4,g.keys.length);
+    groupsHtml += `<div class="karl-label">${g.label}</div><div class="fak-grid" style="grid-template-columns:repeat(${cols},1fr)" data-g="${g.id}"></div>`;
+  });
   card.innerHTML = `
     <div class="item-hero">
       <div class="ie">${d.e}</div>
       <div><h3>${esc(d.n)}</h3><p>${showHint?esc(d.hint):'I vilket fack hör den hemma?'}</p></div>
     </div>
     <div class="sort-q">Fack in — välj rätt fraktion</div>
-    <div class="karl-label">🟦 Fyrfackskärl 1</div>
-    <div class="fak-grid" id="k1"></div>
-    <div class="karl-label">🟩 Fyrfackskärl 2</div>
-    <div class="fak-grid" id="k2"></div>
-    <div class="special-row" id="special"></div>
+    ${groupsHtml}
     <div class="sort-feedback" id="sortFb"></div>`;
-  const mkBtn=(key,special)=>{
-    const f=FRAC[key];
-    const b=document.createElement('button');
-    b.className='fak'+(special?' special':''); b.style.background=f.color;
-    b.dataset.k=key;
-    b.innerHTML=`<span class="fe">${f.emoji}</span><span class="fn">${f.short}</span>`;
-    b.onclick=()=>chooseFrac(key,b);
-    return b;
-  };
-  const k1=card.querySelector('#k1'), k2=card.querySelector('#k2'), sp=card.querySelector('#special');
-  FRAC_ORDER_K1.forEach(k=>k1.appendChild(mkBtn(k,false)));
-  FRAC_ORDER_K2.forEach(k=>k2.appendChild(mkBtn(k,false)));
-  ['elbox','avc'].forEach(k=>sp.appendChild(mkBtn(k,true)));
-  // highlight hint (glasögon level 2) — faint ring on the correct one
+  GROUPS.forEach(g=>{
+    const grid=card.querySelector(`.fak-grid[data-g="${g.id}"]`);
+    g.keys.forEach(key=>{
+      const f=FRAC[key];
+      const b=document.createElement('button'); b.className='fak'; b.dataset.k=key;
+      const icon = f.img ? `<img class="symimg" src="${f.img}" alt="">` : `<span class="emojibox" style="background:${f.color}">${f.emoji}</span>`;
+      b.innerHTML = `${icon}<span class="fn">${f.name}</span>`;
+      b.onclick=()=>chooseFrac(key,b);
+      grid.appendChild(b);
+    });
+  });
+  // glasögon nivå 2 — markera rätt fack
   if(save.upg.glasogon>=2){
     const right=card.querySelector(`.fak[data-k="${d.f}"]`);
-    if(right) right.style.boxShadow='0 0 0 3px #ffffff, 0 0 14px 2px rgba(255,255,255,.9)';
+    if(right){ right.style.outline='3px solid var(--green)'; right.style.outlineOffset='-1px'; }
   }
   document.getElementById('sort').classList.add('show');
   sfxPickup();
