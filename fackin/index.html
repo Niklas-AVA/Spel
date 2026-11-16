@@ -1266,18 +1266,18 @@ const ICONS = (function(){
   function shine(c,x,y,w,h){ c.fillStyle='rgba(255,255,255,.45)'; rr(c,x,y,w,h,w/2); c.fill(); }
   // ---------- parametric archetypes ----------
   function glassBottle(col,clear){ return function(c){
-    c.fillStyle=col; c.strokeStyle=clear?'#6fa6bb':'rgba(0,0,0,.25)'; c.lineWidth=2;
+    c.fillStyle=col; c.strokeStyle=clear?'#3f7e97':'rgba(0,0,0,.25)'; c.lineWidth=2;
     c.beginPath(); c.moveTo(-5,-24); c.lineTo(5,-24); c.lineTo(5,-14); c.quadraticCurveTo(11,-6,11,4); c.lineTo(11,20); c.quadraticCurveTo(11,24,7,24); c.lineTo(-7,24); c.quadraticCurveTo(-11,24,-11,20); c.lineTo(-11,4); c.quadraticCurveTo(-11,-6,-5,-14); c.closePath(); c.fill(); c.stroke();
     shine(c,-7,-10,4,26);
   }; }
   function glassJar(col,clear){ return function(c){
-    c.fillStyle=col; c.strokeStyle=clear?'#6fa6bb':'rgba(0,0,0,.22)'; c.lineWidth=2;
+    c.fillStyle=col; c.strokeStyle=clear?'#3f7e97':'rgba(0,0,0,.22)'; c.lineWidth=2;
     rr(c,-13,-8,26,30,7); c.fill(); c.stroke();
     c.fillStyle='#d8dde0'; rr(c,-12,-18,24,10,4); c.fill(); c.strokeStyle='rgba(0,0,0,.2)'; c.stroke();
     shine(c,-9,-3,4,22);
   }; }
   function perfume(col,clear){ return function(c){
-    c.fillStyle=col; c.strokeStyle=clear?'#6fa6bb':'rgba(0,0,0,.22)'; c.lineWidth=2;
+    c.fillStyle=col; c.strokeStyle=clear?'#3f7e97':'rgba(0,0,0,.22)'; c.lineWidth=2;
     rr(c,-10,-6,20,28,5); c.fill(); c.stroke();
     c.fillStyle='#b9bfc4'; rr(c,-4,-20,8,8,2); c.fill(); rr(c,-5,-24,10,5,2); c.fill();
     shine(c,-7,-2,3,20);
@@ -1355,7 +1355,7 @@ const ICONS = (function(){
     c.strokeStyle=col; c.lineWidth=3; c.beginPath(); c.arc(-6,-6,5,Math.PI,0); c.stroke(); c.beginPath(); c.arc(6,-6,5,Math.PI,0); c.stroke();
     c.fillStyle='rgba(255,255,255,.35)'; rr(c,-8,2,16,12,2); c.fill();
   }; }
-  function film(c){ c.fillStyle='rgba(150,200,220,.55)'; c.beginPath(); c.moveTo(-16,-14); c.quadraticCurveTo(-4,-18,8,-12); c.quadraticCurveTo(20,-6,14,8); c.quadraticCurveTo(8,22,-6,18); c.quadraticCurveTo(-20,14,-16,-14); c.closePath(); c.fill(); c.strokeStyle='rgba(255,255,255,.7)'; c.lineWidth=1.4; c.stroke(); }
+  function film(c){ c.fillStyle='rgba(120,182,208,.85)'; c.beginPath(); c.moveTo(-16,-14); c.quadraticCurveTo(-4,-18,8,-12); c.quadraticCurveTo(20,-6,14,8); c.quadraticCurveTo(8,22,-6,18); c.quadraticCurveTo(-20,14,-16,-14); c.closePath(); c.fill(); c.strokeStyle='#4a86a0'; c.lineWidth=1.8; c.stroke(); }
   function pot(col){ return function(c){
     c.fillStyle=col; c.beginPath(); c.moveTo(-14,-10); c.lineTo(14,-10); c.lineTo(10,22); c.lineTo(-10,22); c.closePath(); c.fill();
     c.fillStyle='rgba(0,0,0,.12)'; rr(c,-15,-12,30,5,2); c.fill();
@@ -1414,10 +1414,16 @@ const ICONS = (function(){
   function dishBrush(c){ c.fillStyle='#2f7fd1'; rr(c,-4,-20,8,28,3); c.fill(); c.strokeStyle='#c79a4a'; c.lineWidth=2; c.lineCap='round'; for(let x=-10;x<=10;x+=3){ c.beginPath(); c.moveTo(x,8); c.lineTo(x,20); c.stroke(); } }
   function cigarette(c){ c.save(); c.rotate(-0.4); c.fillStyle='#f3f0e6'; rr(c,-18,-5,30,10,2); c.fill(); c.fillStyle='#d9a441'; rr(c,8,-5,8,10,2); c.fill(); c.fillStyle='#4a4f55'; rr(c,-18,-5,4,10,2); c.fill(); c.restore(); }
   function toothbrush(c){ c.fillStyle='#2fa84f'; rr(c,-18,-4,34,8,3); c.fill(); c.strokeStyle='#eef1f3'; c.lineWidth=2; c.lineCap='round'; for(let x=10;x<=16;x+=2){ c.beginPath(); c.moveTo(x,-4); c.lineTo(x,-12); c.stroke(); } }
-  function glassShard(c){ c.fillStyle='rgba(180,220,235,.6)'; c.beginPath(); c.moveTo(-10,20); c.lineTo(-8,-4); c.lineTo(-2,-12); c.lineTo(2,-4); c.lineTo(0,20); c.closePath(); c.fill(); c.strokeStyle='rgba(120,170,190,.8)'; c.lineWidth=1.6; c.stroke(); c.strokeStyle='rgba(255,255,255,.7)'; c.lineWidth=1.2; c.beginPath(); c.moveTo(-5,16); c.lineTo(-4,-6); c.stroke(); }
+  function glassShard(c){
+    c.fillStyle='rgba(158,206,226,.95)';
+    c.beginPath(); c.moveTo(-12,20); c.lineTo(-11,-9); c.lineTo(-4,-2); c.lineTo(1,-14); c.lineTo(5,-4); c.lineTo(11,-11); c.lineTo(12,20); c.closePath(); c.fill();
+    c.strokeStyle='#3f7e97'; c.lineWidth=2.4; c.lineJoin='round'; c.stroke();
+    c.fillStyle='rgba(255,255,255,.55)'; c.beginPath(); c.moveTo(-9,-7); c.lineTo(-5,-1); c.lineTo(-8,18); c.lineTo(-11,18); c.closePath(); c.fill();
+    c.strokeStyle='rgba(255,255,255,.75)'; c.lineWidth=1.4; c.beginPath(); c.moveTo(4,15); c.lineTo(5,-5); c.stroke();
+  }
   function catSand(c){ c.fillStyle='#cbb98f'; c.beginPath(); c.moveTo(-16,16); c.quadraticCurveTo(-14,2,0,2); c.quadraticCurveTo(14,2,16,16); c.closePath(); c.fill(); c.fillStyle='#b89a58'; for(const p of [[-6,8],[4,10],[0,13],[9,13]]){ c.beginPath(); c.arc(p[0],p[1],2,0,6.3); c.fill(); } }
 
-  const GLASS={fargat:'#3a9d6a',brun:'#7a4a22',green:'#3a9d6a'}; const CLEAR='#cfe4ee';
+  const GLASS={fargat:'#3a9d6a',brun:'#7a4a22',green:'#3a9d6a'}; const CLEAR='#bcd9e8';
   const MAP={
     bananskal:banana, applskrutt:appleCore, kaffesump:coffee, potatisskal:peel, fiskrens:fish,
     brodkant:bread, aggskal:egg, apelsinskal:orangePeel, matrester:foodScrap, tepase:teabag, gronsaksrens:carrot, snittblommor:flower,
