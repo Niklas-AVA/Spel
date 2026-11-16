@@ -189,8 +189,10 @@
   .item-hero h3{margin:0;font-size:22px;font-family:Fredoka}
   .item-hero p{margin:3px 0 0;font-size:14px;color:var(--ink-soft)}
   .sort-q{font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-soft);margin:0 4px 8px}
-  .karl-label{font-size:13px;font-weight:700;color:var(--ink-soft);margin:10px 4px 7px;display:flex;align-items:center;gap:6px}
+  .karl-label{font-size:13px;font-weight:700;color:var(--ink-soft);margin:10px 4px 6px;display:flex;align-items:center;justify-content:center;gap:6px}
+  .karl{max-width:300px;margin:0 auto 12px;border:4px solid #8a949b;border-radius:16px;padding:8px;background:#e9edef;box-shadow:inset 0 3px 0 rgba(255,255,255,.55),0 3px 7px rgba(0,0,0,.09)}
   .fak-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+  .karl .fak-grid{gap:7px}
   .fak{border:2px solid var(--line);border-radius:12px;background:#fff;padding:5px 4px 7px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center}
   .fak:active{transform:scale(.96)}
   .fak .symimg{width:100%;aspect-ratio:1;border-radius:8px;object-fit:cover;display:block}
@@ -432,10 +434,10 @@ const FRAC = {
 };
 // Grupperna = de fysiska dit-platserna. Spelaren väljer rätt fraktion i rätt grupp.
 const GROUPS = [
-  {id:'k1',    label:'🟩 Fyrfackskärl 1',        keys:['mat','rest','fargat','ofargat']},
-  {id:'k2',    label:'🟦 Fyrfackskärl 2',        keys:['tidning','papper','plast','metall']},
-  {id:'elbox', label:'🔋 El-boxen',               keys:['batteri','ljuskalla','smael']},
-  {id:'avc',   label:'♻️ Återvinningscentralen', keys:['avc']},
+  {id:'k1',    label:'🟩 Fyrfackskärl 1',        keys:['mat','rest','fargat','ofargat'], cols:2},
+  {id:'k2',    label:'🟦 Fyrfackskärl 2',        keys:['tidning','papper','plast','metall'], cols:2},
+  {id:'elbox', label:'🔋 El-boxen',               keys:['batteri','ljuskalla','smael'], cols:3},
+  {id:'avc',   label:'♻️ Återvinningscentralen', keys:['avc'], cols:1},
 ];
 
 // Varje sak: {n:namn, e:emoji, f:fraktion, hint:kort ledtråd, klur:true om kluring/special}
@@ -945,8 +947,8 @@ function openSort(it){
   const heroIcon = (it.img && it.img.ok) ? `<img src="${it.img.img.src}" alt="">` : d.e;
   let groupsHtml='';
   GROUPS.forEach(g=>{
-    const cols=Math.min(4,g.keys.length);
-    groupsHtml += `<div class="karl-label">${g.label}</div><div class="fak-grid" style="grid-template-columns:repeat(${cols},1fr)" data-g="${g.id}"></div>`;
+    const cols=g.cols||Math.min(4,g.keys.length);
+    groupsHtml += `<div class="karl-label">${g.label}</div><div class="karl"><div class="fak-grid" style="grid-template-columns:repeat(${cols},1fr)" data-g="${g.id}"></div></div>`;
   });
   card.innerHTML = `
     <div class="item-hero">
