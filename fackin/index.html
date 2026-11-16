@@ -320,7 +320,7 @@
           <li><span class="he">🚶</span><span><b>Gå rundan.</b> Dra på skärmen (eller använd piltangenter) för att gå runt i området.</span></li>
           <li><span class="he">🔎</span><span><b>Hitta skräpet.</b> Varje sak har en tydlig skylt med vad det är. Gå fram till den.</span></li>
           <li><span class="he">♻️</span><span><b>Välj rätt fraktion.</b> Facken använder <b>Avfall Sveriges symboler</b>. Du får upp båda <b>fyrfackskärlen</b>, <b>el-boxen</b> (batterier, ljuskällor, småelektronik) och <b>Återvinningscentralen</b>.</span></li>
-          <li><span class="he">⚡</span><span><b>Kluringar.</b> <b>Litiumbatterier</b> och <b>farligt avfall</b> → ÅVC, <b>porslin &amp; keramik</b> → ÅVC – inte i kärlet!</span></li>
+          <li><span class="he">⚡</span><span><b>Kluringar.</b> <b>Litiumbatterier</b> och <b>farligt avfall</b> ska till ÅVC – inte i kärlet!</span></li>
           <li><span class="he">🔥</span><span><b>Kombo.</b> Flera rätt i rad ger poängmultiplikator.</span></li>
         </ul>
       </div>
@@ -427,7 +427,6 @@ const FRAC = {
   batteri:  {name:'Batterier',                 img:'sym-batteri.png',  color:'#ef8a00', group:'elbox'},
   ljuskalla:{name:'Ljuskällor',               img:'sym-ljuskalla.png', color:'#ef8a00', group:'elbox'},
   smael:    {name:'Småelektronik',             img:'sym-smael.png',    color:'#ef8a00', group:'elbox'},
-  porslin:  {name:'Porslin & keramik',         img:'sym-porslin.png',  color:'#0e436f', group:'avc'},
   avc:      {name:'Återvinningscentral',       emoji:'♻️',             color:'#2b3340', group:'avc'},
 };
 // Grupperna = de fysiska dit-platserna. Spelaren väljer rätt fraktion i rätt grupp.
@@ -435,7 +434,7 @@ const GROUPS = [
   {id:'k1',    label:'🟩 Fyrfackskärl 1',        keys:['mat','rest','fargat','ofargat']},
   {id:'k2',    label:'🟦 Fyrfackskärl 2',        keys:['tidning','papper','plast','metall']},
   {id:'elbox', label:'🔋 El-boxen',               keys:['batteri','ljuskalla','smael']},
-  {id:'avc',   label:'♻️ Återvinningscentralen', keys:['porslin','avc']},
+  {id:'avc',   label:'♻️ Återvinningscentralen', keys:['avc']},
 ];
 
 // Varje sak: {n:namn, e:emoji, f:fraktion, hint:kort ledtråd, klur:true om kluring/special}
@@ -490,9 +489,6 @@ const ITEMS = [
   {n:'Gammal mobil', e:'📱', f:'smael', hint:'Småelektronik → el-boxen', klur:true},
   {n:'Laddsladd', e:'🔌', f:'smael', hint:'Sladdar → småelektronik → el-boxen', klur:true},
   {n:'Elektrisk tandborste', e:'🪥', f:'smael', hint:'Småelektronik → el-boxen', klur:true},
-  // --- Porslin & keramik (ÅVC) ---
-  {n:'Trasig kaffekopp', e:'☕', f:'porslin', hint:'Porslin & keramik → ÅVC', klur:true},
-  {n:'Keramikkruka', e:'🏺', f:'porslin', hint:'Porslin & keramik → ÅVC', klur:true},
   // --- Återvinningscentral: farligt avfall, lithium, grovt ---
   {n:'Litiumbatteri (verktyg)', e:'⚡', f:'avc', hint:'Kluring! Litiumbatteri = farligt → ÅVC', klur:true},
   {n:'Burk målarfärg', e:'🎨', f:'avc', hint:'Farligt avfall → ÅVC', klur:true},
