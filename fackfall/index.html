@@ -221,9 +221,11 @@
   function facksForLevel(l){ return l>=7 ? 6 : l>=4 ? 5 : 4; }
   function setFackCount(n){ FACKS = ALL_FACKS.slice(0,n); COLS = FACKS.length; }
 
+  // versionsstämpel – höjs vid varje ändring och bryter webbläsarens cache på bilderna
+  const GAME_VERSION = '2';
   // fraktionssymboler – samma bilder som kärlen i Fack in
   const symImg={};
-  CATS.forEach(c=>{ if(c.sym){ const im=new Image(); im.src=c.sym; symImg[c.key]=im; } });
+  CATS.forEach(c=>{ if(c.sym){ const im=new Image(); im.src=c.sym+'?v='+GAME_VERSION; symImg[c.key]=im; } });
 
   const ITEMS = {
     plast:  [['Plastflaska','🧴'],['Plastpåse','🛍️'],['Plastmugg','🥤'],['Schampoflaska','🧴']],
